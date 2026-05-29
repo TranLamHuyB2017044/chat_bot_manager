@@ -1,11 +1,24 @@
-import { auth } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import KpiCard from "@/components/dashboard/KpiCard";
 import { Users, Activity, ShieldOff, DollarSign } from "lucide-react";
+import type { AuthUser } from "@/types/auth";
 
 export default async function AdminPage() {
-  const session = await auth();
-  if (session?.user?.role !== "admin") redirect("/dashboard");
+  const cookieStore = await cookies();
+  const userStr = cookieStore.get("bt_user")?.value;
+
+  if (!userStr) redirect("/login");
+
+  let user: AuthUser;
+  try {
+    user = JSON.parse(userStr) as AuthUser;
+  } catch {
+    redirect("/login");
+  }
+
+  // Chỉ admin (role === 0) mới được vào trang này
+  if (user!.role !== 0) redirect("/dashboard");
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -26,34 +39,10 @@ export default async function AdminPage() {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          label="Tổng users"
-          value="1,204"
-          change="+32"
-          up
-          icon={<Users size={16} />}
-        />
-        <KpiCard
-          label="Active now"
-          value="87"
-          change="+5"
-          up
-          icon={<Activity size={16} />}
-        />
-        <KpiCard
-          label="Bị ban"
-          value="12"
-          change="+2"
-          up={false}
-          icon={<ShieldOff size={16} />}
-        />
-        <KpiCard
-          label="Revenue (M)"
-          value="$1.2M"
-          change="+18%"
-          up
-          icon={<DollarSign size={16} />}
-        />
+        <KpiCard label="Tổng users" value="1,204" change="+32" up icon={<Users size={16} />} />
+        <KpiCard label="Active now"  value="87"    change="+5"  up icon={<Activity size={16} />} />
+        <KpiCard label="Bị ban"      value="12"    change="+2"  up={false} icon={<ShieldOff size={16} />} />
+        <KpiCard label="Revenue (M)" value="$1.2M" change="+18%" up icon={<DollarSign size={16} />} />
       </div>
 
       {/* System status */}
@@ -65,10 +54,10 @@ export default async function AdminPage() {
           </p>
           <div className="space-y-3">
             {[
-              { service: "API Server",     status: "Healthy",  latency: "12ms",  ok: true  },
-              { service: "Database",       status: "Healthy",  latency: "3ms",   ok: true  },
-              { service: "Auth Service",   status: "Healthy",  latency: "8ms",   ok: true  },
-              { service: "Email Service",  status: "Degraded", latency: "320ms", ok: false },
+              { service: "API Server",    status: "Healthy",  latency: "12ms",  ok: true  },
+              { service: "Database",      status: "Healthy",  latency: "3ms",   ok: true  },
+              { service: "Auth Service",  status: "Healthy",  latency: "8ms",   ok: true  },
+              { service: "Email Service", status: "Degraded", latency: "320ms", ok: false },
             ].map(({ service, status, latency, ok }) => (
               <div key={service} className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -76,14 +65,8 @@ export default async function AdminPage() {
                   <span className="text-sm text-text-primary dark:text-textDark-primary">{service}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-text-muted dark:text-textDark-secondary font-mono">
-                    {latency}
-                  </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-pill font-medium ${
-                    ok
-                      ? "bg-success-bg text-success-text"
-                      : "bg-warning-bg text-warning-text"
-                  }`}>
+                  <span className="text-xs text-text-muted dark:text-textDark-secondary font-mono">{latency}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-pill font-medium ${ok ? "bg-success-bg text-success-text" : "bg-warning-bg text-warning-text"}`}>
                     {status}
                   </span>
                 </div>
@@ -99,10 +82,10 @@ export default async function AdminPage() {
           </p>
           <div className="space-y-3">
             {[
-              { name: "Nguyễn Thị Hoa",  email: "hoa@email.com",    role: "user",  time: "2 min ago" },
-              { name: "Trần Minh Khoa",  email: "khoa@email.com",   role: "user",  time: "15 min ago" },
-              { name: "Lê Thị Lan",      email: "lan@email.com",    role: "admin", time: "1 hr ago" },
-              { name: "Phạm Văn Đức",    email: "duc@email.com",    role: "user",  time: "3 hr ago" },
+              { name: "Nguyễn Thị Hoa", email: "hoa@email.com",  role: 2, time: "2 min ago"  },
+              { name: "Trần Minh Khoa", email: "khoa@email.com", role: 2, time: "15 min ago" },
+              { name: "Lê Thị Lan",     email: "lan@email.com",  role: 0, time: "1 hr ago"   },
+              { name: "Phạm Văn Đức",   email: "duc@email.com",  role: 2, time: "3 hr ago"   },
             ].map(({ name, email, role, time }) => (
               <div key={email} className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -110,21 +93,17 @@ export default async function AdminPage() {
                     {name[0]}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-medium text-text-primary dark:text-textDark-primary truncate">
-                      {name}
-                    </p>
-                    <p className="text-[10px] text-text-muted dark:text-textDark-muted truncate">
-                      {email}
-                    </p>
+                    <p className="text-xs font-medium text-text-primary dark:text-textDark-primary truncate">{name}</p>
+                    <p className="text-[10px] text-text-muted dark:text-textDark-muted truncate">{email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-pill font-semibold ${
-                    role === "admin"
+                    role === 0
                       ? "bg-brand-soft text-success-text dark:bg-brand-softDark dark:text-brand"
                       : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
                   }`}>
-                    {role}
+                    {role === 0 ? "Admin" : "User"}
                   </span>
                   <span className="text-[10px] text-text-muted dark:text-textDark-muted">{time}</span>
                 </div>

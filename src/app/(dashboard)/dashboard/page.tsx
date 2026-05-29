@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useChatbotStore, Chatbot } from "@/store/chatbotStore";
+import { useEffect } from "react";
+import { useChatbotStore, Chatbot, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Bot, Plus, MessageSquare, Calendar, ArrowRight, Loader2, Trash2 } from "lucide-react";
@@ -9,13 +9,14 @@ import { useRouter } from "next/navigation";
 export default function DashboardPage() {
   const router = useRouter();
   const { chatbots, deleteChatbot, setActiveChatbotId } = useChatbotStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useStoreHydration();
 
-  // Sync state with localstorage on mount
+  // Sync state on mount
   useEffect(() => {
-    setIsHydrated(true);
-    setActiveChatbotId(null); // Reset active chatbot context when on global dashboard
-  }, [setActiveChatbotId]);
+    if (isHydrated) {
+      setActiveChatbotId(null); // Reset active chatbot context when on global dashboard
+    }
+  }, [isHydrated, setActiveChatbotId]);
 
   const handleCreateBot = () => {
     router.push("/dashboard/create");

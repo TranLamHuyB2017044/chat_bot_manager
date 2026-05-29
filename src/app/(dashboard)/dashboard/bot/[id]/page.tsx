@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useChatbotStore } from "@/store/chatbotStore";
+import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 import { Badge } from "@/components/ui/Badge";
 import { Loader2, MessageSquare, HelpCircle, Coins, MessageCircle, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,13 +10,8 @@ export default function BotOverviewPage() {
   const params = useParams();
   const botId = params.id as string;
   const { chatbots, updateChatbot } = useChatbotStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useStoreHydration();
   const [loadingStats, setLoadingStats] = useState(true);
-
-  // Hydration sync
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   // Fetch updated stats from API server (keeps metrics in sync with widget chat triggers)
   useEffect(() => {

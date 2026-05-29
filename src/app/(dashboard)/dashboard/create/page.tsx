@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -45,7 +45,7 @@ export default function CreateChatbotPage() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [isCrawling, setIsCrawling] = useState(false);
   const [crawlerLogs, setCrawlerLogs] = useState<string[]>([]);
-  
+
   // Step 3: Widget Customizer
   const [primaryColor, setPrimaryColor] = useState("#2DB87A");
   const [welcomeMessage, setWelcomeMessage] = useState("Xin chào! Tôi có thể giúp gì cho bạn hôm nay?");
@@ -78,7 +78,7 @@ export default function CreateChatbotPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const uploadedFiles = Array.from(e.target.files);
-    
+
     uploadedFiles.forEach((file) => {
       const newFile: KnowledgeFile = {
         name: file.name,
@@ -135,7 +135,7 @@ export default function CreateChatbotPage() {
           { name: `Website: ${urlDomain}`, size: 8240, progress: 100, type: "url" },
         ]);
         // Append text to KB text for QA matches
-        setKbText((prev) => prev + `\nThông tin từ website ${websiteUrl}: Vielora là nền tảng SaaS tạo chatbot AI hàng đầu. Chúng tôi cung cấp các widget nhúng nhanh thông minh, hỗ trợ Shadow DOM, cấu hình màu sắc linh hoạt, và hoạt động cực kỳ mượt mà trên WordPress, Next.js, HTML, Shopify, PHP.`);
+        setKbText((prev) => prev + `\nThông tin từ website ${websiteUrl}: BitTech là nền tảng SaaS tạo chatbot AI hàng đầu. Chúng tôi cung cấp các widget nhúng nhanh thông minh, hỗ trợ Shadow DOM, cấu hình màu sắc linh hoạt, và hoạt động cực kỳ mượt mà trên WordPress, Next.js, HTML, Shopify, PHP.`);
       }
     }, 800);
   };
@@ -228,8 +228,8 @@ export default function CreateChatbotPage() {
                   step === s.num
                     ? "bg-brand text-white ring-4 ring-brand/20 shadow-md"
                     : step > s.num
-                    ? "bg-success text-white"
-                    : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
+                      ? "bg-success text-white"
+                      : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
                 )}
               >
                 {step > s.num ? <Check size={14} className="stroke-[3]" /> : s.num}
@@ -294,7 +294,7 @@ export default function CreateChatbotPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
-                
+
                 <div className="flex flex-col gap-1.5">
                   <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
                     Mô tả ngắn gọn
@@ -312,7 +312,7 @@ export default function CreateChatbotPage() {
                   <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
                     Chọn màu nhận diện chatbot
                   </label>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                     {DEFAULT_AVATARS.map((av) => (
                       <button
                         key={av.id}
@@ -323,7 +323,7 @@ export default function CreateChatbotPage() {
                           setPrimaryColor(av.color);
                         }}
                         className={cn(
-                          "flex items-center gap-2 p-3 rounded-btn border transition-all text-left",
+                          "flex items-center gap-2 p-3 rounded-btn border transition-all text-left cursor-pointer",
                           avatar === av.id
                             ? "border-brand bg-brand/5 dark:bg-brand/10 ring-2 ring-brand/25"
                             : "border-surface-border dark:border-dark-border hover:bg-surface-input dark:hover:bg-dark-input"
@@ -338,6 +338,38 @@ export default function CreateChatbotPage() {
                         </span>
                       </button>
                     ))}
+
+                    {/* Custom Color Option */}
+                    <div
+                      className={cn(
+                        "flex items-center gap-2 p-3 rounded-btn border transition-all text-left relative",
+                        avatar === "custom"
+                          ? "border-brand bg-brand/5 dark:bg-brand/10 ring-2 ring-brand/25"
+                          : "border-surface-border dark:border-dark-border hover:bg-surface-input dark:hover:bg-dark-input"
+                      )}
+                    >
+                      <input
+                        type="color"
+                        value={avatar === "custom" ? primaryColor : "#2DB87A"}
+                        onChange={(e) => {
+                          setAvatar("custom");
+                          setPrimaryColor(e.target.value);
+                        }}
+                        className="w-5 h-5 rounded-full cursor-pointer border border-surface-border dark:border-dark-border overflow-hidden bg-transparent shrink-0"
+                        title="Chọn màu tùy chỉnh"
+                      />
+                      <div
+                        className="flex flex-col min-w-0 flex-1 cursor-pointer select-none"
+                        onClick={() => setAvatar("custom")}
+                      >
+                        <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary truncate">
+                          Tự chọn màu
+                        </span>
+                        <span className="text-[9px] font-mono text-text-muted dark:text-textDark-secondary truncate leading-none mt-0.5">
+                          {avatar === "custom" ? primaryColor : "Chọn mã màu"}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -390,7 +422,7 @@ export default function CreateChatbotPage() {
                               ({(file.size / 1024).toFixed(1)} KB)
                             </span>
                           </div>
-                          
+
                           {/* File status / delete */}
                           <div className="flex items-center gap-3">
                             {file.progress < 100 ? (
@@ -436,7 +468,7 @@ export default function CreateChatbotPage() {
                       Bắt đầu Crawl
                     </Button>
                   </div>
-                  
+
                   {/* Crawler console logs */}
                   {crawlerLogs.length > 0 && (
                     <div className="p-3 bg-neutral-900 rounded-btn font-mono text-[10px] text-zinc-400 space-y-1 border border-zinc-800">
@@ -511,7 +543,7 @@ export default function CreateChatbotPage() {
                   <p className="text-[10px] font-bold text-text-muted dark:text-textDark-secondary mb-4 uppercase tracking-widest">
                     Xem trước Widget
                   </p>
-                  
+
                   {/* Chat Box Mockup */}
                   <div className="w-full max-w-[280px] bg-white dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card shadow-lg flex flex-col overflow-hidden">
                     {/* Header */}
@@ -631,7 +663,7 @@ export default function CreateChatbotPage() {
             >
               {step === 1 ? "Hủy bỏ" : "Quay lại"}
             </Button>
-            
+
             <Button
               variant="primary"
               onClick={step === 4 ? handleStartTraining : handleNext}

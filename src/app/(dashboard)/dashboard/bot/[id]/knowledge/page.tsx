@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useChatbotStore, KnowledgeFile } from "@/store/chatbotStore";
+import { useChatbotStore, KnowledgeFile, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -25,7 +25,7 @@ export default function BotKnowledgePage() {
   const botId = params.id as string;
   const { chatbots, updateChatbot } = useChatbotStore();
   
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useStoreHydration();
   const [activeTab, setActiveTab] = useState<"files" | "text" | "url">("files");
 
   // Input states
@@ -34,11 +34,6 @@ export default function BotKnowledgePage() {
   const [isCrawling, setIsCrawling] = useState(false);
   const [crawlerLogs, setCrawlerLogs] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
-
-  // Sync hydration
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
 

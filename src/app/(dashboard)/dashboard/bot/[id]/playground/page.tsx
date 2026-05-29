@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { useChatbotStore } from "@/store/chatbotStore";
+import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Send, Bot, User, RotateCcw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,16 +15,11 @@ export default function BotPlaygroundPage() {
   const params = useParams();
   const botId = params.id as string;
   const { chatbots, updateChatbot } = useChatbotStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useStoreHydration();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Sync hydration
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
 

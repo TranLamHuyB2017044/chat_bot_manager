@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useChatbotStore } from "@/store/chatbotStore";
+import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Settings, Trash2, Save, Loader2, AlertTriangle } from "lucide-react";
@@ -11,16 +11,11 @@ export default function BotSettingsPage() {
   const router = useRouter();
   const botId = params.id as string;
   const { chatbots, updateChatbot, deleteChatbot } = useChatbotStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useStoreHydration();
   const [saving, setSaving] = useState(false);
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-
-  // Sync hydration
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
 

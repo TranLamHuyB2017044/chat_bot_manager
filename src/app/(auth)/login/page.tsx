@@ -1,24 +1,42 @@
 "use client";
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import type { AuthUser } from "@/types/auth";
 
 const schema = z.object({
-  email:    z.string().email("Email không hợp lệ"),
+  username: z.string().min(1, "Vui lòng nhập tên đăng nhập"),
   password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
 });
 type FormData = z.infer<typeof schema>;
 
+// Helper to get or generate device ID
+const getDeviceId = (): string => {
+  let deviceId = localStorage.getItem("device_id");
+  if (!deviceId) {
+    deviceId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem("device_id", deviceId);
+  }
+  return deviceId;
+};
+
 export default function LoginPage() {
   const router = useRouter();
+  const { setUser, user } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [showPass, setShowPass] = useState(false);
+
+  // If already logged in, redirect
+  useEffect(() => {
+    if (user) {
+      router.push(user.role === 0 ? "/admin" : "/dashboard");
+    }
+  }, [user, router]);
 
   const {
     register,
@@ -28,20 +46,35 @@ export default function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     setError(null);
-    const res = await signIn("credentials", {
-      email:    data.email,
-      password: data.password,
-      redirect: false,
-    });
+    try {
+      const deviceId = getDeviceId();
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Device-ID": deviceId,
+        },
+        body: JSON.stringify({
+          username: data.username,
+          password: data.password,
+          isDev: false,
+        }),
+      });
 
-    if (res?.error) {
-      setError("Email hoặc mật khẩu không đúng");
-      return;
+      const result = await response.json();
+
+      if (result.statusCode === 200) {
+        // api_key đã được server lưu vào HttpOnly cookie tự động
+        // Client chỉ nhận user info (không có api_key)
+        const user: AuthUser = result.data.user;
+        setUser(user);
+        router.push(user.role === 0 ? "/admin" : "/dashboard");
+      } else {
+        setError(result.message || "Đăng nhập thất bại");
+      }
+    } catch (err) {
+      setError("Có lỗi xảy ra, vui lòng thử lại sau");
     }
-
-    const sessionRes = await fetch("/api/auth/session");
-    const session    = await sessionRes.json();
-    router.push(session?.user?.role === "admin" ? "/admin" : "/dashboard");
   };
 
   const inputCls = (hasErr?: boolean) =>
@@ -85,48 +118,50 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
-              Email
-            </label>
-            <input
-              {...register("email")}
-              type="email"
-              placeholder="admin@bittech.io"
-              className={inputCls(!!errors.email)}
-            />
-            {errors.email && (
-              <p className="text-xs text-danger mt-1">{errors.email.message}</p>
-            )}
-          </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" autoComplete="off">
+          {/* Username */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Tên đăng nhập
+                </label>
+                <input
+                  {...register("username")}
+                  type="text"
+                  placeholder="username"
+                  autoComplete="off"
+                  className={inputCls(!!errors.username)}
+                />
+                {errors.username && (
+                  <p className="text-xs text-danger mt-1">{errors.username.message}</p>
+                )}
+              </div>
 
-          {/* Password */}
-          <div>
-            <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
-              Mật khẩu
-            </label>
-            <div className="relative">
-              <input
-                {...register("password")}
-                type={showPass ? "text" : "password"}
-                placeholder="••••••••"
-                className={cn(inputCls(!!errors.password), "pr-10")}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass((p) => !p)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition"
-                tabIndex={-1}
-              >
-                {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-xs text-danger mt-1">{errors.password.message}</p>
-            )}
-          </div>
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Mật khẩu
+                </label>
+                <div className="relative">
+                  <input
+                    {...register("password")}
+                    type={showPass ? "text" : "password"}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    className={cn(inputCls(!!errors.password), "pr-10")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass((p) => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition"
+                    tabIndex={-1}
+                  >
+                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="text-xs text-danger mt-1">{errors.password.message}</p>
+                )}
+              </div>
 
           <button
             type="submit"
@@ -148,26 +183,6 @@ export default function LoginPage() {
             )}
           </button>
         </form>
-
-        <p className="text-center text-sm text-text-muted dark:text-textDark-secondary mt-6">
-          Chưa có tài khoản?{" "}
-          <Link href="/register" className="text-brand font-medium hover:underline">
-            Đăng ký ngay
-          </Link>
-        </p>
-
-        {/* Demo credentials */}
-        <div className="mt-5 p-3.5 rounded-btn bg-brand-soft dark:bg-brand-softDark border border-brand/20 dark:border-brand/10 text-xs space-y-1.5">
-          <p className="text-success-text font-semibold flex items-center gap-1.5">
-            <span>🔑</span> Demo accounts
-          </p>
-          <p className="text-text-muted dark:text-textDark-muted font-mono">
-            Admin: admin@bittech.io / admin123
-          </p>
-          <p className="text-text-muted dark:text-textDark-muted font-mono">
-            User: &nbsp;user@bittech.io &nbsp;/ user123
-          </p>
-        </div>
       </div>
     </div>
   );

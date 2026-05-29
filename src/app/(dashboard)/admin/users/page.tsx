@@ -1,20 +1,101 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import { Search, UserPlus, Shield, ShieldOff, Trash2 } from "lucide-react";
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useAuthStore } from "@/store/authStore";
+import { Search, UserPlus, Shield, ShieldOff, Trash2, X, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Demo user data — replace with DB call
 const USERS = [
-  { id: "1", name: "Admin BitTech",  email: "admin@bittech.io",  role: "admin", status: "active",  joined: "2024-01-15" },
-  { id: "2", name: "Normal User",    email: "user@bittech.io",   role: "user",  status: "active",  joined: "2024-03-22" },
-  { id: "3", name: "Nguyễn Thị Hoa",email: "hoa@email.com",     role: "user",  status: "active",  joined: "2025-05-01" },
-  { id: "4", name: "Trần Minh Khoa", email: "khoa@email.com",    role: "user",  status: "banned",  joined: "2025-04-10" },
-  { id: "5", name: "Lê Thị Lan",     email: "lan@email.com",     role: "admin", status: "active",  joined: "2024-11-08" },
-  { id: "6", name: "Phạm Văn Đức",   email: "duc@email.com",     role: "user",  status: "inactive",joined: "2025-03-30" },
+  { id: "1", name: "Admin BitTech",  email: "admin@bittech.io",  role: 0, status: "active",  joined: "2024-01-15" },
+  { id: "2", name: "Normal User",    email: "user@bittech.io",   role: 2, status: "active",  joined: "2024-03-22" },
+  { id: "3", name: "Nguyễn Thị Hoa",email: "hoa@email.com",     role: 2, status: "active",  joined: "2025-05-01" },
+  { id: "4", name: "Trần Minh Khoa", email: "khoa@email.com",    role: 2, status: "banned",  joined: "2025-04-10" },
+  { id: "5", name: "Lê Thị Lan",     email: "lan@email.com",     role: 0, status: "active",  joined: "2024-11-08" },
+  { id: "6", name: "Phạm Văn Đức",   email: "duc@email.com",     role: 2, status: "inactive",joined: "2025-03-30" },
 ];
 
-export default async function UsersPage() {
-  const session = await auth();
-  if (session?.user?.role !== "admin") redirect("/dashboard");
+const createUserSchema = z.object({
+  username: z.string().min(1, "Vui lòng nhập tên đăng nhập"),
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
+  fullname: z.string().min(1, "Vui lòng nhập họ tên"),
+  phone: z.string().optional(),
+  role: z.union([z.literal(0), z.literal(1), z.literal(2)]).default(2),
+});
+
+type CreateUserFormData = z.infer<typeof createUserSchema>;
+
+export default function UsersPage() {
+  const router = useRouter();
+  const { user } = useAuthStore();
+  const [showModal, setShowModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Redirect if not admin
+  if (!user || user.role !== 0) {
+    router.push("/dashboard");
+    return null;
+  }
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateUserFormData>({ resolver: zodResolver(createUserSchema) });
+
+  const onSubmitCreateUser = async (data: CreateUserFormData) => {
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // x-api-key được tự động đọc từ HttpOnly cookie server-side
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (result.statusCode === 201) {
+        setSuccess("Tạo tài khoản thành công!");
+        setShowModal(false);
+        reset();
+        // TODO: Refresh user list
+      } else {
+        setError(result.message || "Tạo tài khoản thất bại");
+      }
+    } catch (err) {
+      setError("Có lỗi xảy ra, vui lòng thử lại sau");
+    }
+  };
+
+  const getRoleLabel = (role: number) => {
+    switch (role) {
+      case 0: return "Admin";
+      case 1: return "Manager";
+      case 2: return "User";
+      default: return "Unknown";
+    }
+  };
+
+  const inputCls = (hasErr?: boolean) =>
+    cn(
+      "w-full px-3 py-2.5 rounded-btn text-sm transition",
+      "bg-surface-input dark:bg-dark-input",
+      "border border-surface-border dark:border-dark-border",
+      "text-text-primary dark:text-textDark-primary",
+      "placeholder:text-text-muted dark:placeholder:text-textDark-muted",
+      "focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20",
+      hasErr && "border-danger focus:border-danger focus:ring-danger/20"
+    );
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -28,7 +109,10 @@ export default async function UsersPage() {
             {USERS.length} tài khoản trong hệ thống
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 rounded-btn bg-brand hover:bg-brand-hover text-white text-sm font-semibold transition shadow-sm shadow-brand/20">
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-btn bg-brand hover:bg-brand-hover text-white text-sm font-semibold transition shadow-sm shadow-brand/20"
+        >
           <UserPlus size={15} />
           Thêm người dùng
         </button>
@@ -106,11 +190,11 @@ export default async function UsersPage() {
                 {/* Role */}
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${
-                    user.role === "admin"
+                    user.role === 0
                       ? "bg-brand-soft text-success-text dark:bg-brand-softDark dark:text-brand"
                       : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
                   }`}>
-                    {user.role}
+                    {getRoleLabel(user.role)}
                   </span>
                 </td>
 
@@ -137,9 +221,9 @@ export default async function UsersPage() {
                   <div className="flex items-center gap-1">
                     <button
                       className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-brand-soft dark:hover:bg-brand-softDark hover:text-success-text transition"
-                      title={user.role === "admin" ? "Hạ quyền" : "Nâng quyền Admin"}
+                      title={user.role === 0 ? "Hạ quyền" : "Nâng quyền Admin"}
                     >
-                      {user.role === "admin" ? (
+                      {user.role === 0 ? (
                         <ShieldOff size={14} />
                       ) : (
                         <Shield size={14} />
@@ -175,6 +259,151 @@ export default async function UsersPage() {
           </div>
         </div>
       </div>
+
+      {/* Create User Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface-card dark:bg-dark-card rounded-card border border-surface-border dark:border-dark-border w-full max-w-md p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-text-primary dark:text-textDark-primary">
+                Thêm người dùng mới
+              </h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-1 rounded-btn hover:bg-surface-input dark:hover:bg-dark-input text-text-muted dark:text-textDark-muted transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {error && (
+              <div className="mb-4 px-4 py-3 rounded-btn bg-danger-bg border border-danger/20 text-danger-text text-sm flex items-center gap-2">
+                <span className="shrink-0">⚠️</span>
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 px-4 py-3 rounded-btn bg-success-bg border border-success/20 text-success-text text-sm flex items-center gap-2">
+                <span className="shrink-0">✅</span>
+                {success}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit(onSubmitCreateUser)} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Tên đăng nhập *
+                </label>
+                <input
+                  {...register("username")}
+                  type="text"
+                  placeholder="tenduongdai"
+                  className={inputCls(!!errors.username)}
+                />
+                {errors.username && (
+                  <p className="text-xs text-danger mt-1">{errors.username.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Email *
+                </label>
+                <input
+                  {...register("email")}
+                  type="email"
+                  placeholder="email@example.com"
+                  className={inputCls(!!errors.email)}
+                />
+                {errors.email && (
+                  <p className="text-xs text-danger mt-1">{errors.email.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Họ tên *
+                </label>
+                <input
+                  {...register("fullname")}
+                  type="text"
+                  placeholder="Nguyễn Văn A"
+                  className={inputCls(!!errors.fullname)}
+                />
+                {errors.fullname && (
+                  <p className="text-xs text-danger mt-1">{errors.fullname.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Số điện thoại
+                </label>
+                <input
+                  {...register("phone")}
+                  type="tel"
+                  placeholder="0123456789"
+                  className={inputCls()}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Mật khẩu *
+                </label>
+                <input
+                  {...register("password")}
+                  type="password"
+                  placeholder="••••••••"
+                  className={inputCls(!!errors.password)}
+                />
+                {errors.password && (
+                  <p className="text-xs text-danger mt-1">{errors.password.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Vai trò
+                </label>
+                <select
+                  {...register("role", { valueAsNumber: true })}
+                  className={inputCls()}
+                >
+                  <option value={2}>User</option>
+                  <option value={1}>Manager</option>
+                  <option value={0}>Admin</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 py-2.5 rounded-btn text-sm font-semibold text-text-secondary dark:text-textDark-secondary bg-surface-input dark:bg-dark-input hover:bg-surface-border dark:hover:bg-dark-border transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 py-2.5 rounded-btn text-sm font-semibold text-white bg-brand hover:bg-brand-hover active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 size={14} className="animate-spin" />
+                      Đang tạo...
+                    </span>
+                  ) : (
+                    "Tạo tài khoản"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

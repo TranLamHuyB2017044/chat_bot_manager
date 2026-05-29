@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
-import { useChatbotStore } from "@/store/chatbotStore";
+import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 import { Check, CheckCircle2, Bot, ArrowRight, LayoutDashboard, Code, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -11,11 +11,7 @@ export default function TrainingSuccessPage() {
   const params = useParams();
   const botId = params.id as string;
   const chatbots = useChatbotStore((s) => s.chatbots);
-
-  const [isHydrated, setIsHydrated] = useState(false);
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const isHydrated = useStoreHydration();
 
   const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
 
@@ -38,7 +34,7 @@ export default function TrainingSuccessPage() {
   // Count files and pages
   const fileCount = bot.knowledgeBase.files.filter((f) => f.type !== "url").length;
   const pageCount = bot.knowledgeBase.files.filter((f) => f.type === "url").length;
-  
+
   let resourceSummary = "";
   if (fileCount > 0 && pageCount > 0) {
     resourceSummary = `đã học xong ${fileCount} tài liệu và ${pageCount} trang từ website`;
@@ -58,7 +54,7 @@ export default function TrainingSuccessPage() {
           <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center shadow-sm">
             <Bot size={18} className="text-white" />
           </div>
-          <span className="text-lg font-bold text-text-primary dark:text-textDark-primary">Vielora</span>
+          <span className="text-lg font-bold text-text-primary dark:text-textDark-primary">BitTech</span>
         </div>
         <h1 className="text-xl font-bold text-text-primary dark:text-textDark-primary">
           Tạo chatbot cho website của bạn
@@ -118,7 +114,7 @@ export default function TrainingSuccessPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Resource tag */}
           <div className="px-2.5 py-1 rounded-pill bg-brand-soft dark:bg-brand-softDark border border-brand/10 text-brand text-[10px] font-bold">
             {fileCount + pageCount} tài nguyên

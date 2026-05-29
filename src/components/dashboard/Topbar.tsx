@@ -1,26 +1,32 @@
 "use client";
-import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useUIStore } from "@/store";
 import { useChatbotStore } from "@/store/chatbotStore";
+import { useAuthStore } from "@/store/authStore";
 import { Sun, Moon, LogOut, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import type { AuthUser } from "@/types/auth";
 
 interface Props {
-  user: {
-    name?:  string | null;
-    email?: string | null;
-    role:   string;
-  };
+  user: AuthUser;
   pageTitle?: string;
 }
+
+const ROLE_LABELS: Record<number, string> = {
+  0: "Admin",
+  1: "Manager",
+  2: "User",
+};
 
 export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
   const { theme, toggleTheme } = useUIStore();
   const pathname = usePathname();
+  const router = useRouter();
   const chatbots = useChatbotStore((s) => s.chatbots);
-  
+  const { clear } = useAuthStore();
+
   const [isHydrated, setIsHydrated] = useState(false);
   useEffect(() => {
     setIsHydrated(true);
@@ -35,12 +41,26 @@ export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  const initials = user.name
-    ?.split(" ")
+  const handleLogout = async () => {
+    try {
+      // Xóa HttpOnly cookie (bt_api_key) phía server
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      // Xóa store + cookie bt_user phía client
+      clear();
+      router.push("/login");
+    }
+  };
+
+  const displayName = user.fullname || user.email || "User";
+  const initials = displayName
+    .split(" ")
     .map((n) => n[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() ?? "BT";
+    .toUpperCase();
+
+  const roleLabel = ROLE_LABELS[user.role] ?? "User";
 
   const iconBtn = cn(
     "p-2 rounded-btn transition-colors",
@@ -111,12 +131,12 @@ export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
         <span
           className={cn(
             "text-[10px] px-2 py-0.5 rounded-pill font-semibold capitalize",
-            user.role === "admin"
+            user.role === 0
               ? "bg-brand-soft text-success-text dark:bg-brand-softDark dark:text-brand"
               : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
           )}
         >
-          {user.role}
+          {roleLabel}
         </span>
 
         {/* Avatar + name */}
@@ -125,13 +145,13 @@ export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
             {initials}
           </div>
           <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary hidden sm:block max-w-[100px] truncate select-none">
-            {user.name}
+            {displayName}
           </span>
         </div>
 
         {/* Sign out */}
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={handleLogout}
           className={cn(iconBtn, "hover:text-danger ml-1")}
           aria-label="Sign out"
         >

@@ -1,1 +1,25 @@
-[]
+[
+  {
+    "name": "JOMO Bot",
+    "description": "chat bot hỗ trợ bán hàng",
+    "avatarUrl": "bot-blue",
+    "status": "active",
+    "trainingProgress": 100,
+    "knowledgeBase": {
+      "files": [],
+      "text": "Tên thương hiệu: JOMO (powered by UrBox)\nSlogan: “Bộ quà toàn năng” — Cá nhân hóa phần thưởng, gỡ rối nhu cầu quà tặng & chương trình tri ân khách hàng/nhân viên của doanh nghiệp.\nSản phẩm chính: Voucher điện tử UrBox (có thể kết hợp với Phiếu quà tặng giấy).\nCách gửi: Chủ yếu qua SMS, có thể đính kèm thiệp chúc mừng (có nhiều chủ đề).\nTính năng nổi bật:\nThêm người nhận thủ công hoặc tải file Excel (tối đa 100 người, file mẫu có sẵn).\nVoucher được định danh theo số điện thoại người nhận.\nChọn giá trị voucher linh hoạt.\nChọn thời gian gửi quà.\nHỗ trợ xuất chứng từ thanh toán (chứng từ thu ký điện tử + hóa đơn VAT).\nĐơn hàng > 20 triệu: liên hệ hotline 1900 299 232.\n\nLiên hệ: Email support cho chứng từ thanh toán.\n",
+      "websiteUrl": ""
+    },
+    "widgetConfig": {
+      "primaryColor": "#2DB87A",
+      "displayName": "JOMO Bot",
+      "welcomeMessage": "Xin chào! Tôi có thể giúp gì cho bạn hôm nay?",
+      "placeholderText": "Nhập tin nhắn..."
+    },
+    "id": "i24k08k",
+    "messagesCount": null,
+    "chatsCount": null,
+    "fallbackRate": 0,
+    "creditsUsed": null
+  }
+]

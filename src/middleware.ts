@@ -1,33 +1,44 @@
-import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import type { AuthUser } from "@/types/auth";
 
-const PUBLIC_PATHS = ["/login", "/register"];
+const PUBLIC_PATHS = ["/login"];
 const ADMIN_PATHS  = ["/admin"];
 
-export default auth((req) => {
-  const { pathname } = req.nextUrl;
-  const session      = req.auth;
-  const isPublic     = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-  const isAdmin      = ADMIN_PATHS.some((p)  => pathname.startsWith(p));
+function getUserFromCookies(req: NextRequest): AuthUser | null {
+  const userStr = req.cookies.get("bt_user")?.value;
+  if (!userStr) return null;
+  try {
+    return JSON.parse(userStr) as AuthUser;
+  } catch {
+    return null;
+  }
+}
 
-  // Not logged in → redirect to login
-  if (!session && !isPublic) {
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const user      = getUserFromCookies(req);
+  const isPublic  = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isAdmin   = ADMIN_PATHS.some((p)  => pathname.startsWith(p));
+
+  // Chưa đăng nhập → redirect về login
+  if (!user && !isPublic) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // Logged-in user tries public page → redirect to dashboard
-  if (session && isPublic) {
-    const dest = session.user.role === "admin" ? "/admin" : "/dashboard";
+  // Đã đăng nhập mà vào trang public → redirect vào dashboard
+  if (user && isPublic) {
+    const dest = user.role === 0 ? "/admin" : "/dashboard";
     return NextResponse.redirect(new URL(dest, req.url));
   }
 
-  // Non-admin tries admin route → redirect to dashboard
-  if (session && isAdmin && session.user.role !== "admin") {
+  // Không phải admin mà vào trang admin → redirect dashboard
+  if (user && isAdmin && user.role !== 0) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],

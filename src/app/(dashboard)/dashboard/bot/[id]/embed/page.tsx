@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useChatbotStore } from "@/store/chatbotStore";
+import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Copy, Check, Code, Sparkles, BookOpen, Laptop, Globe, Server, CheckCircle2 } from "lucide-react";
@@ -13,14 +13,9 @@ export default function BotEmbedPage() {
   const params = useParams();
   const botId = params.id as string;
   const { chatbots } = useChatbotStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useStoreHydration();
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<Platform>("html");
-
-  // Sync hydration
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
 
@@ -31,7 +26,7 @@ export default function BotEmbedPage() {
       const timer = setTimeout(() => {
         const script = document.createElement("script");
         script.src = `/widget.js?botId=${botId}`;
-        script.id = `vielora-widget-loader-${botId}`;
+        script.id = `BitTech-widget-loader-${botId}`;
         script.defer = true;
         document.body.appendChild(script);
       }, 500);
@@ -39,11 +34,11 @@ export default function BotEmbedPage() {
       return () => {
         clearTimeout(timer);
         // Cleanup widget script
-        const scriptEl = document.getElementById(`vielora-widget-loader-${botId}`);
+        const scriptEl = document.getElementById(`BitTech-widget-loader-${botId}`);
         if (scriptEl) scriptEl.remove();
-        
+
         // Remove widget DOM container (inside shadow DOM)
-        const widgetContainer = document.getElementById("vielora-chat-widget-container");
+        const widgetContainer = document.getElementById("BitTech-chat-widget-container");
         if (widgetContainer) widgetContainer.remove();
       };
     }
@@ -60,16 +55,16 @@ export default function BotEmbedPage() {
   // Get local dev CDN URL or fallback
   const cdnUrl = typeof window !== "undefined"
     ? `${window.location.protocol}//${window.location.host}/widget.js?botId=${botId}`
-    : `https://cdn.vielora.com/widget.js?botId=${botId}`;
+    : `https://cdn.BitTech.com/widget.js?botId=${botId}`;
 
   // Script snippets
   const embedCodeSingle = `<script src="${cdnUrl}" defer></script>`;
   const embedCodeDouble = `<script>
-  window.VieloraWidgetConfig = {
+  window.BitTechWidgetConfig = {
     botId: "${botId}"
   };
 </script>
-<script src="${typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/widget.js` : "https://cdn.vielora.com/widget.js"}" defer></script>`;
+<script src="${typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/widget.js` : "https://cdn.BitTech.com/widget.js"}" defer></script>`;
 
   const activeEmbedCode = activeTab === "nextjs" ? `import Script from 'next/script';
 
@@ -140,10 +135,10 @@ export default function ChatWidget() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto animate-fadeIn">
-      
+
       {/* Left Column: Embed code & Setup Instructions */}
       <div className="lg:col-span-2 space-y-6">
-        
+
         {/* Code box card */}
         <div className="bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card p-5 shadow-sm space-y-4">
           <div className="flex items-center gap-2 border-b border-surface-border dark:border-dark-border pb-3">
@@ -179,7 +174,7 @@ export default function ChatWidget() {
               )}
             </button>
           </div>
-          
+
           <div className="flex gap-2 p-3 bg-brand-soft dark:bg-brand-softDark border border-brand/10 rounded-btn text-[10px] text-brand leading-relaxed">
             <Sparkles size={14} className="shrink-0 mt-0.5" />
             <p>
@@ -248,7 +243,7 @@ export default function ChatWidget() {
           <h3 className="text-xs font-bold text-text-primary dark:text-textDark-primary uppercase tracking-widest border-b border-surface-border dark:border-dark-border pb-2.5">
             Trạng thái kết nối
           </h3>
-          
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-text-secondary dark:text-textDark-secondary">CDN Endpoint:</span>
@@ -269,7 +264,7 @@ export default function ChatWidget() {
               </span>
             </div>
           </div>
-          
+
           <div className="border-t border-surface-border dark:border-dark-border pt-4 text-center">
             <div className="inline-flex items-center gap-1.5 text-xs text-success font-bold bg-success-bg dark:bg-success/10 px-3 py-1.5 rounded-btn border border-success/20">
               <CheckCircle2 size={13} />

@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
+import { useEffect, useState } from "react";
 
 export interface KnowledgeFile {
   name: string;
@@ -75,6 +76,9 @@ const DEFAULT_WIZARD: WizardState = {
   websiteUrl: "",
   primaryColor: "#2DB87A",
 };
+
+// Hydration state tracker (singleton)
+let hasHydrated = false;
 
 export const useChatbotStore = create<ChatbotState>()(
   persist(
@@ -155,6 +159,28 @@ export const useChatbotStore = create<ChatbotState>()(
     {
       name: "chatbot-store",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => {
+        return () => {
+          hasHydrated = true;
+        };
+      },
     }
   )
 );
+
+// Hook to check hydration once
+export function useStoreHydration() {
+  const [hydrated, setHydrated] = useState(hasHydrated);
+
+  useEffect(() => {
+    if (!hasHydrated) {
+      const unsub = useChatbotStore.persist.onFinishHydration(() => {
+        hasHydrated = true;
+        setHydrated(true);
+      });
+      return unsub;
+    }
+  }, []);
+
+  return hydrated;
+}

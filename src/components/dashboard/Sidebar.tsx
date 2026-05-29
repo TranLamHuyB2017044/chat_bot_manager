@@ -15,19 +15,13 @@ import {
   Bot,
   Plus
 } from "lucide-react";
-import { useChatbotStore } from "@/store/chatbotStore";
-import { useEffect, useState } from "react";
+import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 
-export default function Sidebar({ role }: { role: string }) {
+export default function Sidebar({ role }: { role: number }) {
   const pathname = usePathname();
   const router = useRouter();
   const chatbots = useChatbotStore((s) => s.chatbots);
-  
-  // Hydration state check for localstorage persistence
-  const [isHydrated, setIsHydrated] = useState(false);
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  const isHydrated = useStoreHydration();
 
   // Determine if we are inside a bot route
   const isBotRoute = pathname.includes("/dashboard/bot/");
@@ -37,6 +31,9 @@ export default function Sidebar({ role }: { role: string }) {
   const isActive = (href: string) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
+    }
+    if (href === `/dashboard/bot/${botId}`) {
+      return pathname === href;
     }
     return pathname === href || pathname.startsWith(href + "/");
   };
@@ -71,7 +68,7 @@ export default function Sidebar({ role }: { role: string }) {
           <Bot size={18} className="text-white" />
         </div>
         <div>
-          <span className="text-sm font-bold text-sidebar-navActive tracking-wide">Vielora</span>
+          <span className="text-sm font-bold text-sidebar-navActive tracking-wide">BitTech</span>
           <p className="text-[10px] text-sidebar-navSec -mt-0.5 font-medium">SaaS AI Widget</p>
         </div>
       </div>
@@ -179,7 +176,7 @@ export default function Sidebar({ role }: { role: string }) {
         ) : (
           <div className="px-3 py-1">
             <p className="text-[10px] text-sidebar-navSec font-medium">
-              © 2026 Vielora SaaS Inc.
+              © 2026 BitTech SaaS Inc.
             </p>
           </div>
         )}

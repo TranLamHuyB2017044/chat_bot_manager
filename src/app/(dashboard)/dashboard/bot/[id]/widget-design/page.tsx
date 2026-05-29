@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useChatbotStore, WidgetConfig } from "@/store/chatbotStore";
+import { useChatbotStore, WidgetConfig, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -11,7 +11,7 @@ export default function BotWidgetDesignPage() {
   const params = useParams();
   const botId = params.id as string;
   const { chatbots, updateChatbot } = useChatbotStore();
-  const [isHydrated, setIsHydrated] = useState(false);
+  const isHydrated = useStoreHydration();
   const [saving, setSaving] = useState(false);
 
   // Widget config form states
@@ -19,11 +19,6 @@ export default function BotWidgetDesignPage() {
   const [displayName, setDisplayName] = useState("");
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [placeholderText, setPlaceholderText] = useState("");
-
-  // Sync hydration
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
 
   const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
 
