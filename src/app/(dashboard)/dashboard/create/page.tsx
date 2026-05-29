@@ -1,0 +1,648 @@
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { useChatbotStore, KnowledgeFile } from "@/store/chatbotStore";
+import {
+  ArrowRight,
+  ArrowLeft,
+  Bot,
+  Upload,
+  Link as LinkIcon,
+  FileText,
+  Palette,
+  Sparkles,
+  Check,
+  Loader2,
+  Globe,
+  Plus,
+  Trash2
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const DEFAULT_AVATARS = [
+  { id: "bot-blue", color: "#3B82F6", label: "Robot Xanh" },
+  { id: "bot-green", color: "#10B981", label: "Robot Lục" },
+  { id: "bot-purple", color: "#8B5CF6", label: "Robot Tím" },
+  { id: "bot-pink", color: "#EC4899", label: "Robot Hồng" },
+];
+
+export default function CreateChatbotPage() {
+  const router = useRouter();
+  const { addChatbot, updateChatbot } = useChatbotStore();
+  const [step, setStep] = useState(1);
+
+  // --- Step States ---
+  // Step 1: Basic Info
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [avatar, setAvatar] = useState("bot-blue");
+
+  // Step 2: Knowledge Base
+  const [files, setFiles] = useState<KnowledgeFile[]>([]);
+  const [kbText, setKbText] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [isCrawling, setIsCrawling] = useState(false);
+  const [crawlerLogs, setCrawlerLogs] = useState<string[]>([]);
+  
+  // Step 3: Widget Customizer
+  const [primaryColor, setPrimaryColor] = useState("#2DB87A");
+  const [welcomeMessage, setWelcomeMessage] = useState("Xin chào! Tôi có thể giúp gì cho bạn hôm nay?");
+  const [placeholderText, setPlaceholderText] = useState("Nhập tin nhắn...");
+
+  // Step 4: Training Simulation
+  const [isTraining, setIsTraining] = useState(false);
+  const [trainingProgress, setTrainingProgress] = useState(0);
+
+  // Handle Form navigation and validation
+  const validateStep = () => {
+    if (step === 1 && !name.trim()) {
+      alert("Vui lòng nhập tên chatbot");
+      return false;
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (validateStep()) {
+      setStep((prev) => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    setStep((prev) => prev - 1);
+  };
+
+  // Mock upload simulator
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const uploadedFiles = Array.from(e.target.files);
+    
+    uploadedFiles.forEach((file) => {
+      const newFile: KnowledgeFile = {
+        name: file.name,
+        size: file.size,
+        progress: 0,
+        type: file.name.split(".").pop() || "txt",
+      };
+
+      setFiles((prev) => [...prev, newFile]);
+
+      // Simulate upload progress
+      let uploadProgress = 0;
+      const interval = setInterval(() => {
+        uploadProgress += 20;
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.name === file.name ? { ...f, progress: Math.min(uploadProgress, 100) } : f
+          )
+        );
+        if (uploadProgress >= 100) clearInterval(interval);
+      }, 200);
+    });
+  };
+
+  const handleDeleteFile = (fileName: string) => {
+    setFiles((prev) => prev.filter((f) => f.name !== fileName));
+  };
+
+  // Mock URL crawler
+  const handleCrawl = () => {
+    if (!websiteUrl.trim()) return;
+    setIsCrawling(true);
+    setCrawlerLogs([]);
+
+    const logs = [
+      `[1/4] Đang kết nối tới ${websiteUrl}...`,
+      `[2/4] Đang phân tích file robots.txt và sitemap.xml...`,
+      `[3/4] Đã tìm thấy 5 trang con liên quan. Bắt đầu thu thập dữ liệu...`,
+      `[4/4] Crawl hoàn tất! Đã trích xuất 8,240 ký tự từ website.`,
+    ];
+
+    let logIdx = 0;
+    const interval = setInterval(() => {
+      if (logIdx < logs.length) {
+        setCrawlerLogs((prev) => [...prev, logs[logIdx]]);
+        logIdx++;
+      } else {
+        clearInterval(interval);
+        setIsCrawling(false);
+        // Add crawler result to knowledge files list
+        const urlDomain = websiteUrl.replace(/https?:\/\/(www\.)?/, "");
+        setFiles((prev) => [
+          ...prev,
+          { name: `Website: ${urlDomain}`, size: 8240, progress: 100, type: "url" },
+        ]);
+        // Append text to KB text for QA matches
+        setKbText((prev) => prev + `\nThông tin từ website ${websiteUrl}: Vielora là nền tảng SaaS tạo chatbot AI hàng đầu. Chúng tôi cung cấp các widget nhúng nhanh thông minh, hỗ trợ Shadow DOM, cấu hình màu sắc linh hoạt, và hoạt động cực kỳ mượt mà trên WordPress, Next.js, HTML, Shopify, PHP.`);
+      }
+    }, 800);
+  };
+
+  // Start training bot
+  const handleStartTraining = async () => {
+    setIsTraining(true);
+
+    // 1. Create bot data structure
+    const newBotData = {
+      name,
+      description,
+      avatarUrl: avatar,
+      status: "training" as const,
+      trainingProgress: 0,
+      knowledgeBase: {
+        files,
+        text: kbText + "\n" + files.map(f => `Nội dung tài liệu ${f.name}: Tài liệu này chứa thông tin hỗ trợ kỹ thuật và giới thiệu chatbot.`).join("\n"),
+        websiteUrl,
+      },
+      widgetConfig: {
+        primaryColor,
+        displayName: name,
+        welcomeMessage,
+        placeholderText,
+      },
+    };
+
+    // 2. Save inside Zustand store
+    const newBotId = addChatbot(newBotData);
+
+    // 3. Sync to Backend JSON DB (so widget loaded externally can read it!)
+    try {
+      await fetch("/api/bots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newBotData, id: newBotId }),
+      });
+    } catch (e) {
+      console.error("Error syncing bot to server db:", e);
+    }
+
+    // 4. Animate progress bar
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 10;
+      setTrainingProgress(progress);
+      updateChatbot(newBotId, { trainingProgress: progress });
+
+      if (progress >= 100) {
+        clearInterval(interval);
+        updateChatbot(newBotId, { status: "active", trainingProgress: 100 });
+        // Sync training completion status back to server JSON DB
+        fetch("/api/bots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...newBotData, id: newBotId, status: "active", trainingProgress: 100 }),
+        }).then(() => {
+          router.push(`/dashboard/bot/${newBotId}/success`);
+        });
+      }
+    }, 300);
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto py-6 space-y-8">
+      {/* Page Title */}
+      <div className="text-center space-y-2">
+        <h1 className="text-2xl font-extrabold text-text-primary dark:text-textDark-primary">
+          Tạo Chatbot AI Cho Website Của Bạn
+        </h1>
+        <p className="text-xs text-text-muted dark:text-textDark-secondary">
+          Hoàn thành 4 bước bên dưới để sở hữu trợ lý ảo thông minh của riêng bạn
+        </p>
+      </div>
+
+      {/* Stepper Progress Bar */}
+      <div className="flex items-center justify-between px-6 py-4 bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card shadow-sm">
+        {[
+          { num: 1, label: "Thông tin" },
+          { num: 2, label: "Tri thức" },
+          { num: 3, label: "Widget" },
+          { num: 4, label: "Huấn luyện" },
+        ].map((s) => (
+          <div key={s.num} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-1.5 z-10">
+              <div
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300",
+                  step === s.num
+                    ? "bg-brand text-white ring-4 ring-brand/20 shadow-md"
+                    : step > s.num
+                    ? "bg-success text-white"
+                    : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
+                )}
+              >
+                {step > s.num ? <Check size={14} className="stroke-[3]" /> : s.num}
+              </div>
+              <span className={cn(
+                "text-[10px] font-semibold transition-colors duration-300",
+                step === s.num ? "text-brand" : "text-text-muted dark:text-textDark-secondary"
+              )}>
+                {s.label}
+              </span>
+            </div>
+            {s.num < 4 && (
+              <div
+                className={cn(
+                  "h-[2px] flex-1 mx-2 transition-all duration-300",
+                  step > s.num ? "bg-success" : "bg-surface-border dark:bg-dark-border"
+                )}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Step Content */}
+      <div className="bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card p-6 shadow-sm min-h-[40vh] flex flex-col justify-between">
+        {isTraining ? (
+          // Training Screen
+          <div className="flex flex-col items-center justify-center py-10 space-y-6 text-center">
+            <div className="relative">
+              <Loader2 className="animate-spin text-brand stroke-[1.5]" size={72} />
+              <Bot className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-brand" size={32} />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-text-primary dark:text-textDark-primary">
+                Đang huấn luyện chatbot...
+              </h3>
+              <p className="text-xs text-text-muted dark:text-textDark-secondary max-w-xs">
+                Chúng tôi đang phân tích các tài liệu, liên kết trang và cấu trúc tri thức bạn cung cấp.
+              </p>
+            </div>
+            <div className="w-full max-w-sm space-y-1.5">
+              <div className="h-2 rounded-full bg-surface-input dark:bg-dark-input overflow-hidden">
+                <div
+                  className="h-full bg-brand rounded-full transition-all duration-300"
+                  style={{ width: `${trainingProgress}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] font-semibold text-text-muted dark:text-textDark-secondary">
+                <span>Trích xuất tri thức</span>
+                <span>{trainingProgress}%</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div>
+            {/* Step 1: Basic Info */}
+            {step === 1 && (
+              <div className="space-y-5 animate-fadeIn">
+                <Input
+                  label="Tên chatbot *"
+                  placeholder="Ví dụ: Trợ lý bán hàng, Huy Bot..."
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
+                    Mô tả ngắn gọn
+                  </label>
+                  <textarea
+                    placeholder="Mô tả công việc của chatbot (Ví dụ: Hỗ trợ giải đáp thắc mắc về sản phẩm và dịch vụ khách hàng)"
+                    rows={3}
+                    className="w-full px-3 py-2.5 rounded-btn text-sm bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition resize-none"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
+                    Chọn màu nhận diện chatbot
+                  </label>
+                  <div className="grid grid-cols-4 gap-3">
+                    {DEFAULT_AVATARS.map((av) => (
+                      <button
+                        key={av.id}
+                        type="button"
+                        onClick={() => {
+                          setAvatar(av.id);
+                          // Sync color selection as widget primary color by default
+                          setPrimaryColor(av.color);
+                        }}
+                        className={cn(
+                          "flex items-center gap-2 p-3 rounded-btn border transition-all text-left",
+                          avatar === av.id
+                            ? "border-brand bg-brand/5 dark:bg-brand/10 ring-2 ring-brand/25"
+                            : "border-surface-border dark:border-dark-border hover:bg-surface-input dark:hover:bg-dark-input"
+                        )}
+                      >
+                        <div
+                          className="w-5 h-5 rounded-full shrink-0 shadow-sm"
+                          style={{ backgroundColor: av.color }}
+                        />
+                        <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary truncate">
+                          {av.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Knowledge Base */}
+            {step === 2 && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* File upload zone */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
+                    Tải lên file tài liệu (PDF, TXT, DOCX, CSV)
+                  </label>
+                  <div className="border-2 border-dashed border-surface-border dark:border-dark-border hover:border-brand/50 dark:hover:border-brand/50 rounded-card p-6 flex flex-col items-center justify-center cursor-pointer transition-colors relative">
+                    <input
+                      type="file"
+                      multiple
+                      accept=".pdf,.txt,.docx,.csv"
+                      onChange={handleFileUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    <Upload size={32} className="text-text-muted dark:text-textDark-secondary mb-2 animate-bounce" />
+                    <span className="text-xs font-bold text-text-primary dark:text-textDark-primary">
+                      Kéo thả hoặc nhấp để chọn file
+                    </span>
+                    <span className="text-[10px] text-text-muted dark:text-textDark-secondary mt-1">
+                      Hỗ trợ tối đa 10MB mỗi file
+                    </span>
+                  </div>
+                </div>
+
+                {/* Uploading progress list */}
+                {files.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-text-secondary dark:text-textDark-secondary">
+                      Tài liệu đã tải lên ({files.length})
+                    </label>
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {files.map((file) => (
+                        <div
+                          key={file.name}
+                          className="flex items-center justify-between p-2.5 bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border rounded-btn"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <FileText size={15} className="text-brand shrink-0" />
+                            <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary truncate">
+                              {file.name}
+                            </span>
+                            <span className="text-[9px] text-text-muted dark:text-textDark-secondary">
+                              ({(file.size / 1024).toFixed(1)} KB)
+                            </span>
+                          </div>
+                          
+                          {/* File status / delete */}
+                          <div className="flex items-center gap-3">
+                            {file.progress < 100 ? (
+                              <div className="flex items-center gap-1.5">
+                                <Loader2 size={11} className="animate-spin text-brand" />
+                                <span className="text-[10px] font-bold text-brand">{file.progress}%</span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] font-bold text-success">Đã tải lên</span>
+                            )}
+                            <button
+                              onClick={() => handleDeleteFile(file.name)}
+                              className="text-text-muted hover:text-danger p-0.5"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Web Crawl Section */}
+                <div className="space-y-2.5">
+                  <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
+                    Hoặc Crawl nội dung từ URL Website
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://example.com"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
+                      prefix={<Globe size={14} />}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={handleCrawl}
+                      loading={isCrawling}
+                      disabled={isCrawling || !websiteUrl.trim()}
+                    >
+                      Bắt đầu Crawl
+                    </Button>
+                  </div>
+                  
+                  {/* Crawler console logs */}
+                  {crawlerLogs.length > 0 && (
+                    <div className="p-3 bg-neutral-900 rounded-btn font-mono text-[10px] text-zinc-400 space-y-1 border border-zinc-800">
+                      {crawlerLogs.map((log, i) => (
+                        <p key={i} className={cn(i === crawlerLogs.length - 1 && "text-brand font-semibold")}>
+                          {log}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Paste Text Directly */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
+                    Hoặc nhập kiến thức dạng văn bản trực tiếp
+                  </label>
+                  <textarea
+                    placeholder="Dán hoặc gõ văn bản chi tiết về doanh nghiệp, FAQ hoặc sản phẩm của bạn..."
+                    rows={4}
+                    className="w-full px-3 py-2.5 rounded-btn text-sm bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition resize-none"
+                    value={kbText}
+                    onChange={(e) => setKbText(e.target.value)}
+                  />
+                  <p className="text-[10px] text-text-muted dark:text-textDark-secondary">
+                    Ký tự hiện tại: {kbText.length}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Widget Config */}
+            {step === 3 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
+                {/* Form controls */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
+                      Màu chủ đạo Widget (Primary Color)
+                    </label>
+                    <div className="flex gap-3 items-center">
+                      <input
+                        type="color"
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="w-10 h-10 rounded-lg cursor-pointer border border-surface-border dark:border-dark-border overflow-hidden bg-transparent"
+                      />
+                      <Input
+                        value={primaryColor}
+                        onChange={(e) => setPrimaryColor(e.target.value)}
+                        className="font-mono text-xs uppercase"
+                        placeholder="#2DB87A"
+                      />
+                    </div>
+                  </div>
+
+                  <Input
+                    label="Lời chào mừng"
+                    value={welcomeMessage}
+                    onChange={(e) => setWelcomeMessage(e.target.value)}
+                  />
+
+                  <Input
+                    label="Gợi ý ô nhập tin nhắn"
+                    value={placeholderText}
+                    onChange={(e) => setPlaceholderText(e.target.value)}
+                  />
+                </div>
+
+                {/* Live Preview Container */}
+                <div className="flex flex-col border border-surface-border dark:border-dark-border rounded-card bg-surface-page dark:bg-dark-page p-4 items-center justify-center min-h-[300px]">
+                  <p className="text-[10px] font-bold text-text-muted dark:text-textDark-secondary mb-4 uppercase tracking-widest">
+                    Xem trước Widget
+                  </p>
+                  
+                  {/* Chat Box Mockup */}
+                  <div className="w-full max-w-[280px] bg-white dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card shadow-lg flex flex-col overflow-hidden">
+                    {/* Header */}
+                    <div
+                      className="p-3 text-white flex items-center gap-2"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-white text-[10px] font-bold">
+                        {name.substring(0, 2).toUpperCase() || "AI"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold leading-tight truncate">
+                          {name || "Trợ lý AI"}
+                        </p>
+                        <p className="text-[8px] opacity-80 leading-none">Trực tuyến</p>
+                      </div>
+                    </div>
+
+                    {/* Messages Body */}
+                    <div className="p-3 space-y-2 h-36 overflow-y-auto bg-slate-50 dark:bg-neutral-900/50">
+                      <div className="flex gap-1.5 items-start">
+                        <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center text-[8px] font-bold shrink-0 text-text-muted">
+                          AI
+                        </div>
+                        <div className="bg-white dark:bg-zinc-800 border border-surface-border dark:border-dark-border rounded-btn p-2 text-[10px] text-text-secondary dark:text-textDark-primary leading-relaxed max-w-[85%]">
+                          {welcomeMessage}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Input */}
+                    <div className="p-2 border-t border-surface-border dark:border-dark-border bg-white dark:bg-dark-card flex items-center gap-1.5">
+                      <div className="flex-1 bg-surface-input dark:bg-dark-input px-2.5 py-1.5 rounded-pill text-[9px] text-text-muted dark:text-textDark-secondary border border-surface-border/50 dark:border-dark-border/50">
+                        {placeholderText}
+                      </div>
+                      <button
+                        className="w-6 h-6 rounded-full text-white flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: primaryColor }}
+                        type="button"
+                      >
+                        <ArrowRight size={10} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Summary */}
+            {step === 4 && (
+              <div className="space-y-6 animate-fadeIn">
+                <div className="p-4 bg-brand-soft dark:bg-brand-softDark border border-brand/20 rounded-card flex gap-3.5 items-start">
+                  <Sparkles className="text-brand shrink-0 mt-0.5" size={18} />
+                  <div>
+                    <h3 className="text-sm font-bold text-brand">Sẵn sàng huấn luyện</h3>
+                    <p className="text-xs text-text-secondary dark:text-textDark-primary mt-0.5 leading-relaxed">
+                      Mô hình AI sẽ học trực tiếp các thông tin được cung cấp từ các file tài liệu và link website bên dưới.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Left Column: Basic summary */}
+                  <div className="p-4 bg-surface-input dark:bg-dark-input rounded-card space-y-3.5">
+                    <p className="text-xs font-bold text-text-secondary dark:text-textDark-primary border-b border-surface-border dark:border-dark-border pb-1.5">
+                      Thông tin chatbot
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-xs"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        {name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-text-primary dark:text-textDark-primary">{name}</p>
+                        <p className="text-[10px] text-text-muted dark:text-textDark-secondary mt-0.5 truncate max-w-[200px]">
+                          {description || "Không có mô tả."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Knowledge Base summary */}
+                  <div className="p-4 bg-surface-input dark:bg-dark-input rounded-card space-y-3.5">
+                    <p className="text-xs font-bold text-text-secondary dark:text-textDark-primary border-b border-surface-border dark:border-dark-border pb-1.5">
+                      Tài nguyên tri thức
+                    </p>
+                    <div className="space-y-1.5 text-xs text-text-secondary dark:text-textDark-primary">
+                      <div className="flex justify-between">
+                        <span>Số file tài liệu:</span>
+                        <span className="font-semibold">{files.filter(f => f.type !== "url").length} files</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Website crawl:</span>
+                        <span className="font-semibold">{websiteUrl ? "1 website" : "Không có"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Độ dài văn bản nhập:</span>
+                        <span className="font-semibold">{kbText.length} ký tự</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Form Actions Footer */}
+        {!isTraining && (
+          <div className="flex justify-between items-center border-t border-surface-border dark:border-dark-border mt-6 pt-5">
+            <Button
+              variant="secondary"
+              onClick={step === 1 ? () => router.push("/dashboard") : handleBack}
+              icon={<ArrowLeft size={14} />}
+            >
+              {step === 1 ? "Hủy bỏ" : "Quay lại"}
+            </Button>
+            
+            <Button
+              variant="primary"
+              onClick={step === 4 ? handleStartTraining : handleNext}
+              icon={step === 4 ? <Sparkles size={14} /> : <ArrowRight size={14} />}
+              className="shadow-sm"
+            >
+              {step === 4 ? "Bắt đầu huấn luyện chatbot" : "Tiếp tục"}
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

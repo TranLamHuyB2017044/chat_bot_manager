@@ -1,0 +1,39 @@
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+:root {
+  --sidebar-width: 220px;
+  --topbar-height: 56px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: theme(colors.surface.page);
+  color: theme(colors.text.primary);
+  font-family: var(--font-ibm-plex-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark body {
+  background: theme(colors.dark.page);
+  color: theme(colors.textDark.primary);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: theme(colors.surface.border);
+  border-radius: 99px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: theme(colors.dark.border);
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
+}
