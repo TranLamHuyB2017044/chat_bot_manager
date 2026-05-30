@@ -1,4 +1,4 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
 import {
@@ -8,7 +8,6 @@ import {
   BookOpen,
   Palette,
   Code,
-  ArrowLeft,
   Bot,
   Home,
   Users
@@ -17,7 +16,6 @@ import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 
 export default function Sidebar({ role }: { role: number }) {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const chatbots = useChatbotStore((s) => s.chatbots);
   const isHydrated = useStoreHydration();
 
@@ -38,10 +36,6 @@ export default function Sidebar({ role }: { role: number }) {
       return pathname === href;
     }
     return pathname === href || pathname.startsWith(href + "/");
-  };
-
-  const handleBackToDashboard = () => {
-    navigate("/dashboard");
   };
 
   // Bot-specific navigation list
@@ -244,23 +238,13 @@ export default function Sidebar({ role }: { role: number }) {
         )}
       </nav>
 
-      {/* Sidebar Footer / Back button */}
+      {/* Sidebar Footer */}
       <div className="px-2 py-3 border-t border-sidebar-deepest/50">
-        {isBotRoute ? (
-          <button
-            onClick={handleBackToDashboard}
-            className="flex w-full items-center gap-2 px-3 py-2 rounded-btn text-xs font-semibold text-sidebar-navText hover:bg-sidebar-hover hover:text-sidebar-navActive transition-colors"
-          >
-            <ArrowLeft size={13} className="shrink-0 text-sidebar-navSec group-hover:text-sidebar-navText" />
-            <span className="truncate">Về Dashboard</span>
-          </button>
-        ) : (
-          <div className="px-3 py-1">
-            <p className="text-[10px] text-sidebar-navSec font-medium">
-              © 2026 BitTech SaaS Inc.
-            </p>
-          </div>
-        )}
+        <div className="px-3 py-1">
+          <p className="text-[10px] text-sidebar-navSec font-medium">
+            © 2026 BitTech SaaS Inc.
+          </p>
+        </div>
       </div>
     </aside>
   );
