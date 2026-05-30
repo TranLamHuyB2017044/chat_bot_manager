@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { toast } from "@/components/ui/Sonner";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -17,7 +18,7 @@ export default function BotEmbedPage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<Platform>("html");
 
-  const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
+  const bot = chatbots.find((b) => b.id === botId) || null;
 
   // Mount the real widget script dynamically on the client!
   useEffect(() => {
@@ -44,7 +45,8 @@ export default function BotEmbedPage() {
     }
   }, [botId, isHydrated]);
 
-  if (!isHydrated || !bot) {
+  // If we have bot data already, show the page immediately even if still hydrating
+  if (!bot && (!isHydrated || chatbots.length === 0)) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin text-brand" size={32} />
@@ -72,10 +74,34 @@ export default function ChatWidget() {
   );
 }` : embedCodeSingle;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(activeTab === "nextjs" ? activeEmbedCode : embedCodeSingle);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    const textToCopy = activeTab === "nextjs" ? activeEmbedCode : embedCodeSingle;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        // Fallback for older browsers/environments
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+          document.execCommand("copy");
+        } finally {
+          document.body.removeChild(textArea);
+        }
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success("Đã sao chép mã nhúng vào clipboard!");
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      toast.error("Không thể sao chép mã. Vui lòng thử lại!");
+    }
   };
 
   // Platform instructions

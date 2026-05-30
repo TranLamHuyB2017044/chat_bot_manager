@@ -5,7 +5,7 @@ const BACKEND_URL = process.env.BASE_URL;
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { username, email, password, fullname, phone } = body;
+    const { username, email, password, fullname, phone, role } = body;
 
     if (!username || !email || !password || !fullname) {
       return NextResponse.json(
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const backendRes = await fetch(`${BACKEND_URL}/api/auth/register`, {
       method: "POST",
       headers: backendHeaders,
-      body: JSON.stringify({ username, email, password, fullname, phone }),
+      body: JSON.stringify({ username, email, password, fullname, phone, role: role || 4 }),
     });
 
     const data = await backendRes.json();

@@ -30,9 +30,10 @@ export default function BotOverviewPage() {
     }
   }, [botId, isHydrated, updateChatbot]);
 
-  const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
+  const bot = chatbots.find((b) => b.id === botId) || null;
 
-  if (!isHydrated || !bot) {
+  // If we have bot data already, show the page immediately even if still hydrating
+  if (!bot && (!isHydrated || chatbots.length === 0)) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin text-brand" size={32} />

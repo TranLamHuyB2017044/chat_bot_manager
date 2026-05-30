@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useAuthStore } from "@/store/authStore";
 import { Search, UserPlus, Shield, ShieldOff, Trash2, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/Sonner";
 
 const createUserSchema = z.object({
   username: z.string().min(1, "Vui lòng nhập tên đăng nhập"),
@@ -14,7 +15,6 @@ const createUserSchema = z.object({
   password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
   fullname: z.string().min(1, "Vui lòng nhập họ tên"),
   phone: z.string().optional(),
-  role: z.union([z.literal(0), z.literal(1), z.literal(2)]).default(2),
 });
 
 type CreateUserFormData = z.infer<typeof createUserSchema>;
@@ -23,11 +23,16 @@ export default function UsersPage() {
   const router = useRouter();
   const { user } = useAuthStore();
   const [showModal, setShowModal] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CreateUserFormData>({ resolver: zodResolver(createUserSchema) });
 
   // Fetch actual registered accounts
   const fetchUsers = async () => {
@@ -57,43 +62,41 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  // Redirect if not admin
+  useEffect(() => {
+    // Redirect if not admin
+    if (!user || user.role !== 0) {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
+
   if (!user || user.role !== 0) {
-    router.push("/dashboard");
     return null;
   }
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<CreateUserFormData>({ resolver: zodResolver(createUserSchema) });
-
   const onSubmitCreateUser = async (data: CreateUserFormData) => {
-    setError(null);
-    setSuccess(null);
+    console.log("Form submitted!", data);
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, role: 4 }),
       });
-
+      console.log("API Response Status:", response.status);
       const result = await response.json();
+      console.log("API Response Body:", result);
 
       if (result.statusCode === 201) {
-        setSuccess("Tạo tài khoản thành công!");
+        toast.success("Tạo tài khoản thành công!");
         setShowModal(false);
         reset();
         fetchUsers(); // Refresh list after successful creation!
       } else {
-        setError(result.message || "Tạo tài khoản thất bại");
+        toast.error(result.message || "Tạo tài khoản thất bại");
       }
     } catch (err) {
-      setError("Có lỗi xảy ra, vui lòng thử lại sau");
+      toast.error("Có lỗi xảy ra, vui lòng thử lại sau");
     }
   };
 
@@ -102,6 +105,7 @@ export default function UsersPage() {
       case 0: return "Admin";
       case 1: return "Manager";
       case 2: return "User";
+      case 4: return "User";
       default: return "Unknown";
     }
   };
@@ -309,19 +313,7 @@ export default function UsersPage() {
               </button>
             </div>
 
-            {error && (
-              <div className="mb-4 px-4 py-3 rounded-btn bg-danger-bg border border-danger/20 text-danger-text text-sm flex items-center gap-2">
-                <span className="shrink-0">⚠️</span>
-                {error}
-              </div>
-            )}
 
-            {success && (
-              <div className="mb-4 px-4 py-3 rounded-btn bg-success-bg border border-success/20 text-success-text text-sm flex items-center gap-2">
-                <span className="shrink-0">✅</span>
-                {success}
-              </div>
-            )}
 
             <form onSubmit={handleSubmit(onSubmitCreateUser)} className="space-y-4">
               <div>
@@ -394,20 +386,6 @@ export default function UsersPage() {
                 {errors.password && (
                   <p className="text-xs text-danger mt-1">{errors.password.message}</p>
                 )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
-                  Vai trò
-                </label>
-                <select
-                  {...register("role", { valueAsNumber: true })}
-                  className={inputCls()}
-                >
-                  <option value={2}>User</option>
-                  <option value={1}>Manager</option>
-                  <option value={0}>Admin</option>
-                </select>
               </div>
 
               <div className="flex gap-3 pt-2">

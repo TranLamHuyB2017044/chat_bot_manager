@@ -373,16 +373,31 @@ export const useChatbotStore = create<ChatbotState>()(
 
 // Hook to check hydration once
 export function useStoreHydration() {
-  const [hydrated, setHydrated] = useState(hasHydrated);
+  const [hydrated, setHydrated] = useState(() => {
+    // Check if already hydrated from localStorage on initial render
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('chatbot-store');
+        return stored !== null || hasHydrated;
+      } catch {
+        return hasHydrated;
+      }
+    }
+    return hasHydrated;
+  });
 
   useEffect(() => {
-    if (!hasHydrated) {
-      const unsub = useChatbotStore.persist.onFinishHydration(() => {
-        hasHydrated = true;
-        setHydrated(true);
-      });
-      return unsub;
+    if (hasHydrated) {
+      setHydrated(true);
+      return;
     }
+    
+    const unsub = useChatbotStore.persist.onFinishHydration(() => {
+      hasHydrated = true;
+      setHydrated(true);
+    });
+    
+    return unsub;
   }, []);
 
   return hydrated;

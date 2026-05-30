@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { toast } from "@/components/ui/Sonner";
 import { useChatbotStore, KnowledgeFile, useStoreHydration, mapBackendBotToFrontend } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -35,7 +36,7 @@ export default function BotKnowledgePage() {
   const [crawlerLogs, setCrawlerLogs] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
+  const bot = chatbots.find((b) => b.id === botId) || null;
 
   // Sync state values on load
   useEffect(() => {
@@ -72,7 +73,8 @@ export default function BotKnowledgePage() {
     }
   }, [botId, isHydrated]);
 
-  if (!isHydrated || !bot) {
+  // If we have bot data already, show the page immediately even if still hydrating
+  if (!bot && (!isHydrated || chatbots.length === 0)) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin text-brand" size={32} />
@@ -99,10 +101,10 @@ export default function BotKnowledgePage() {
         if (resData.data) {
           const mappedBot = mapBackendBotToFrontend(resData.data);
           updateChatbot(botId, mappedBot);
-          alert("Lưu và đồng bộ văn bản tri thức thành công!");
+          toast.success("Lưu và đồng bộ văn bản tri thức thành công!");
         }
       } else {
-        alert("Lưu tri thức dạng văn bản thất bại!");
+        toast.error("Lưu tri thức dạng văn bản thất bại!");
       }
     } catch (err) {
       console.error("Error saving text knowledge:", err);
@@ -152,10 +154,10 @@ export default function BotKnowledgePage() {
               files: mappedDocs,
             }
           });
-          alert("Đã tải tài liệu lên và đồng bộ cơ sở tri thức!");
+          toast.success("Đã tải tài liệu lên và đồng bộ cơ sở tri thức!");
         }
       } else {
-        alert("Không thể tải tài liệu lên. Vui lòng thử lại!");
+        toast.error("Không thể tải tài liệu lên. Vui lòng thử lại!");
       }
     } catch (err) {
       console.error("Error uploading RAG documents:", err);
@@ -184,7 +186,7 @@ export default function BotKnowledgePage() {
         if (resData.data) {
           const mappedBot = mapBackendBotToFrontend(resData.data);
           updateChatbot(botId, mappedBot);
-          alert("Đã xóa tài liệu khỏi cơ sở tri thức!");
+          toast.success("Đã xóa tài liệu khỏi cơ sở tri thức!");
         }
       }
     } catch (err) {
@@ -243,7 +245,7 @@ export default function BotKnowledgePage() {
             if (resData.data) {
               const mappedBot = mapBackendBotToFrontend(resData.data);
               updateChatbot(botId, mappedBot);
-              alert("Đã crawl và đồng bộ URL tri thức!");
+              toast.success("Đã crawl và đồng bộ URL tri thức!");
             }
           }
         } catch (err) {

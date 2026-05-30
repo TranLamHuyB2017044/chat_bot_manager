@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { toast } from "@/components/ui/Sonner";
 import { useChatbotStore, KnowledgeFile } from "@/store/chatbotStore";
 import {
   ArrowRight,
@@ -59,7 +60,7 @@ export default function CreateChatbotPage() {
   // Handle Form navigation and validation
   const validateStep = () => {
     if (step === 1 && !name.trim()) {
-      alert("Vui lòng nhập tên chatbot");
+      toast.error("Vui lòng nhập tên chatbot");
       return false;
     }
     return true;
@@ -157,7 +158,7 @@ export default function CreateChatbotPage() {
     });
 
     if (!newBotId) {
-      alert("Tạo chatbot thất bại. Vui lòng thử lại!");
+      toast.error("Tạo chatbot thất bại. Vui lòng thử lại!");
       setIsTraining(false);
       return;
     }
@@ -431,8 +432,8 @@ export default function CreateChatbotPage() {
                   </div>
                 )}
 
-                {/* Web Crawl Section */}
-                <div className="space-y-2.5">
+                {/* Web Crawl Section - Temporarily hidden */}
+                {/* <div className="space-y-2.5">
                   <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
                     Hoặc Crawl nội dung từ URL Website
                   </label>
@@ -454,7 +455,6 @@ export default function CreateChatbotPage() {
                     </Button>
                   </div>
 
-                  {/* Crawler console logs */}
                   {crawlerLogs.length > 0 && (
                     <div className="p-3 bg-neutral-900 rounded-btn font-mono text-[10px] text-zinc-400 space-y-1 border border-zinc-800">
                       {crawlerLogs.map((log, i) => (
@@ -464,7 +464,7 @@ export default function CreateChatbotPage() {
                       ))}
                     </div>
                   )}
-                </div>
+                </div> */}
 
                 {/* Paste Text Directly */}
                 <div className="flex flex-col gap-1.5">
@@ -490,26 +490,6 @@ export default function CreateChatbotPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
                 {/* Form controls */}
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
-                      Màu chủ đạo Widget (Primary Color)
-                    </label>
-                    <div className="flex gap-3 items-center">
-                      <input
-                        type="color"
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="w-10 h-10 rounded-lg cursor-pointer border border-surface-border dark:border-dark-border overflow-hidden bg-transparent"
-                      />
-                      <Input
-                        value={primaryColor}
-                        onChange={(e) => setPrimaryColor(e.target.value)}
-                        className="font-mono text-xs uppercase"
-                        placeholder="#2DB87A"
-                      />
-                    </div>
-                  </div>
-
                   <Input
                     label="Lời chào mừng"
                     value={welcomeMessage}

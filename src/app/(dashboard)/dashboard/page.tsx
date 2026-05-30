@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useChatbotStore, Chatbot, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Bot, Plus, MessageSquare, Calendar, ArrowRight, Loader2, Trash2 } from "lucide-react";
+import { Bot, Plus, MessageSquare, Calendar, ArrowRight, Loader2, Trash2, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/Sonner";
 
@@ -23,9 +23,12 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isHydrated) {
       setActiveChatbotId(null); // Reset active chatbot context when on global dashboard
-      fetchChatbots();
+      // Only fetch if we don't have chatbots yet
+      if (chatbots.length === 0) {
+        fetchChatbots();
+      }
     }
-  }, [isHydrated, setActiveChatbotId, fetchChatbots]);
+  }, [isHydrated, setActiveChatbotId, fetchChatbots, chatbots.length]);
 
   const handleCreateBot = () => {
     router.push("/dashboard/create");
@@ -43,7 +46,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (!isHydrated || isLoading) {
+  if (!isHydrated || (isLoading && chatbots.length === 0)) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin text-brand" size={32} />
@@ -65,6 +68,14 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => fetchChatbots()}
+              icon={<RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />}
+              disabled={isLoading}
+            >
+              Làm mới
+            </Button>
             <Button
               variant="secondary"
               onClick={testToasts}

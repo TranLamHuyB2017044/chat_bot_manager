@@ -13,7 +13,7 @@ export default function TrainingSuccessPage() {
   const chatbots = useChatbotStore((s) => s.chatbots);
   const isHydrated = useStoreHydration();
 
-  const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
+  const bot = chatbots.find((b) => b.id === botId) || null;
 
   const handleGoDashboard = () => {
     router.push("/dashboard");
@@ -23,7 +23,8 @@ export default function TrainingSuccessPage() {
     router.push(`/dashboard/bot/${botId}/embed`);
   };
 
-  if (!isHydrated || !bot) {
+  // If we have bot data already, show the page immediately even if still hydrating
+  if (!bot && (!isHydrated || chatbots.length === 0)) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin text-brand" size={32} />

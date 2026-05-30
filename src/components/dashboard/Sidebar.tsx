@@ -13,7 +13,9 @@ import {
   Code,
   ArrowLeft,
   Bot,
-  Plus
+  Plus,
+  Home,
+  Users
 } from "lucide-react";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 
@@ -23,6 +25,9 @@ export default function Sidebar({ role }: { role: number }) {
   const chatbots = useChatbotStore((s) => s.chatbots);
   const isHydrated = useStoreHydration();
 
+  // Check if we are in admin section
+  const isAdminSection = pathname.startsWith("/admin");
+
   // Determine if we are inside a bot route
   const isBotRoute = pathname.includes("/dashboard/bot/");
   const botId = isBotRoute ? pathname.split("/dashboard/bot/")[1]?.split("/")[0] : null;
@@ -31,6 +36,9 @@ export default function Sidebar({ role }: { role: number }) {
   const isActive = (href: string) => {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
+    }
+    if (href === "/admin") {
+      return pathname === "/admin";
     }
     if (href === `/dashboard/bot/${botId}`) {
       return pathname === href;
@@ -55,6 +63,12 @@ export default function Sidebar({ role }: { role: number }) {
   // Global navigation list
   const GLOBAL_NAV = [
     { href: "/dashboard", label: "Danh sách Chatbot", icon: Bot },
+  ];
+
+  // Admin navigation list
+  const ADMIN_NAV = [
+    { href: "/admin", label: "Home", icon: Home },
+    { href: "/admin/users", label: "Accounts", icon: Users },
   ];
 
   return (
@@ -100,12 +114,13 @@ export default function Sidebar({ role }: { role: number }) {
 
       {/* Main Navigation menu */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-        {isBotRoute && activeBot ? (
+        {/* Show admin nav if role=0 and in admin section */}
+        {role === 0 ? (
           <>
             <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
-              Quản lý Bot
+              Admin
             </p>
-            {BOT_NAV.map(({ href, label, icon: Icon }) => (
+            {ADMIN_NAV.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -129,11 +144,12 @@ export default function Sidebar({ role }: { role: number }) {
                 )}
               </Link>
             ))}
-          </>
-        ) : (
-          <>
+
+            {/* Divider */}
+            <div className="h-px bg-sidebar-deepest/50 my-2 mx-2" />
+
             <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
-              Không gian làm việc
+              Bot Management
             </p>
             {GLOBAL_NAV.map(({ href, label, icon: Icon }) => (
               <Link
@@ -159,6 +175,104 @@ export default function Sidebar({ role }: { role: number }) {
                 )}
               </Link>
             ))}
+
+            {/* Also show bot nav if in bot route */}
+            {isBotRoute && activeBot && (
+              <>
+                <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
+                  Quản lý Bot
+                </p>
+                {BOT_NAV.map(({ href, label, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
+                      isActive(href)
+                        ? "bg-sidebar-active text-sidebar-navActive shadow-sm border-l-2 border-brand pl-2"
+                        : "text-sidebar-navText hover:bg-sidebar-hover hover:text-sidebar-navActive"
+                    )}
+                  >
+                    <Icon
+                      size={15}
+                      className={cn(
+                        "shrink-0 transition-colors duration-200",
+                        isActive(href) ? "text-brand" : "text-sidebar-navSec group-hover:text-sidebar-navText"
+                      )}
+                    />
+                    <span className="truncate">{label}</span>
+                    {isActive(href) && (
+                      <ChevronRight size={12} className="ml-auto text-brand opacity-60" />
+                    )}
+                  </Link>
+                ))}
+              </>
+            )}
+          </>
+        ) : (
+          // Regular user navigation
+          <>
+            {isBotRoute && activeBot ? (
+              <>
+                <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
+                  Quản lý Bot
+                </p>
+                {BOT_NAV.map(({ href, label, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
+                      isActive(href)
+                        ? "bg-sidebar-active text-sidebar-navActive shadow-sm border-l-2 border-brand pl-2"
+                        : "text-sidebar-navText hover:bg-sidebar-hover hover:text-sidebar-navActive"
+                    )}
+                  >
+                    <Icon
+                      size={15}
+                      className={cn(
+                        "shrink-0 transition-colors duration-200",
+                        isActive(href) ? "text-brand" : "text-sidebar-navSec group-hover:text-sidebar-navText"
+                      )}
+                    />
+                    <span className="truncate">{label}</span>
+                    {isActive(href) && (
+                      <ChevronRight size={12} className="ml-auto text-brand opacity-60" />
+                    )}
+                  </Link>
+                ))}
+              </>
+            ) : (
+              <>
+                <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
+                  Không gian làm việc
+                </p>
+                {GLOBAL_NAV.map(({ href, label, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
+                      isActive(href)
+                        ? "bg-sidebar-active text-sidebar-navActive shadow-sm border-l-2 border-brand pl-2"
+                        : "text-sidebar-navText hover:bg-sidebar-hover hover:text-sidebar-navActive"
+                    )}
+                  >
+                    <Icon
+                      size={15}
+                      className={cn(
+                        "shrink-0 transition-colors duration-200",
+                        isActive(href) ? "text-brand" : "text-sidebar-navSec group-hover:text-sidebar-navText"
+                      )}
+                    />
+                    <span className="truncate">{label}</span>
+                    {isActive(href) && (
+                      <ChevronRight size={12} className="ml-auto text-brand opacity-60" />
+                    )}
+                  </Link>
+                ))}
+              </>
+            )}
           </>
         )}
       </nav>

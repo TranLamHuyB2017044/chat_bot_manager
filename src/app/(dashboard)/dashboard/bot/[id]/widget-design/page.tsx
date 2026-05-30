@@ -20,7 +20,7 @@ export default function BotWidgetDesignPage() {
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [placeholderText, setPlaceholderText] = useState("");
 
-  const bot = isHydrated ? chatbots.find((b) => b.id === botId) : null;
+  const bot = chatbots.find((b) => b.id === botId) || null;
 
   // Initialize form fields once bot is loaded
   useEffect(() => {
@@ -32,7 +32,8 @@ export default function BotWidgetDesignPage() {
     }
   }, [bot]);
 
-  if (!isHydrated || !bot) {
+  // If we have bot data already, show the page immediately even if still hydrating
+  if (!bot && (!isHydrated || chatbots.length === 0)) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin text-brand" size={32} />

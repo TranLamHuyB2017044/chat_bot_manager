@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar  from "@/components/dashboard/Topbar";
+import { Toaster } from "@/components/ui/Sonner";
 import type { AuthUser } from "@/types/auth";
 
 async function getUserFromCookies(): Promise<AuthUser | null> {
@@ -32,6 +33,7 @@ export default async function DashboardLayout({
       >
         <Topbar user={user} />
         <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <Toaster />
       </div>
     </div>
   );

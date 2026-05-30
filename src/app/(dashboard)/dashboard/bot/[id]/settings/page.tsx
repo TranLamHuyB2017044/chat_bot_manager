@@ -26,7 +26,8 @@ export default function BotSettingsPage() {
     }
   }, [bot]);
 
-  if (!isHydrated || !bot) {
+  // If we have bot data already, show the page immediately even if still hydrating
+  if (!bot && (!isHydrated || chatbots.length === 0)) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin text-brand" size={32} />
@@ -114,7 +115,7 @@ export default function BotSettingsPage() {
       <div className="bg-danger-bg/20 border border-danger/10 rounded-card p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-2 text-danger">
           <AlertTriangle size={16} />
-          <h2 className="text-sm font-bold">Vùng nguy hiểm (Danger Zone)</h2>
+          <h2 className="text-sm font-bold">Xóa Chatbot</h2>
         </div>
         
         <p className="text-xs text-text-secondary dark:text-textDark-primary leading-relaxed">
