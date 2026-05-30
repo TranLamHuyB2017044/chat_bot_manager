@@ -2,7 +2,7 @@
   {
     "name": "JOMO Bot",
     "description": "chat bot hỗ trợ bán hàng",
-    "avatarUrl": "bot-blue",
+    "avatarUrl": "/chatbot_logo.jpeg",
     "status": "active",
     "trainingProgress": 100,
     "knowledgeBase": {

@@ -1,13 +1,12 @@
-"use client";
-import { useRouter } from "next/navigation";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useUIStore } from "@/store";
 import { useChatbotStore } from "@/store/chatbotStore";
 import { useAuthStore } from "@/store/authStore";
 import { Sun, Moon, LogOut, Bell } from "lucide-react";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
+import { apiFetch } from "@/lib/api";
 
 interface Props {
   user: AuthUser;
@@ -22,8 +21,8 @@ const ROLE_LABELS: Record<number, string> = {
 
 export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
   const { theme, toggleTheme } = useUIStore();
-  const pathname = usePathname();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const chatbots = useChatbotStore((s) => s.chatbots);
   const { clear } = useAuthStore();
 
@@ -43,12 +42,14 @@ export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
 
   const handleLogout = async () => {
     try {
-      // Xóa HttpOnly cookie (bt_api_key) phía server
-      await fetch("/api/auth/logout", { method: "POST" });
+      // Xóa session trên backend bằng cách gọi trực tiếp
+      await apiFetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Ignore
     } finally {
-      // Xóa store + cookie bt_user phía client
+      // Xóa store + localStorage
       clear();
-      router.push("/login");
+      navigate("/login");
     }
   };
 

@@ -3,23 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
     "clsx": "^2.1.1",
-    "cookies-next": "^4.2.1",
     "immer": "^10.1.1",
-    "jose": "^5.9.6",
     "lucide-react": "^0.441.0",
-    "next": "15.3.2",
-    "next-auth": "^5.0.0-beta.22",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.53.0",
+    "react-router-dom": "^6.22.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.2",
     "zod": "^3.23.8",
@@ -27,14 +24,14 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.2.1",
     "eslint": "^9",
-    "eslint-config-next": "15.3.2",
     "prettier": "^3.3.3",
     "prettier-plugin-tailwindcss": "^0.6.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^5.1.4"
   }
 }

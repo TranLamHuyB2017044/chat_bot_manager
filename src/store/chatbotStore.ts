@@ -1,8 +1,8 @@
-"use client";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
 
 export interface KnowledgeFile {
   name: string;
@@ -89,7 +89,7 @@ interface ChatbotState {
 const DEFAULT_WIZARD: WizardState = {
   name: "",
   description: "",
-  avatarUrl: "bot-blue",
+  avatarUrl: "/chatbot_logo.jpeg",
   files: [],
   text: "",
   websiteUrl: "",
@@ -112,11 +112,21 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
     }));
   }
 
+  // Validate avatar URL
+  let avatarUrl = "/chatbot_logo.jpeg";
+  const candidateUrl = bot.avatar_url || bot.avatarUrl;
+  if (candidateUrl) {
+    // Check if it's a valid URL or starts with /
+    if (candidateUrl.startsWith("/") || candidateUrl.startsWith("http://") || candidateUrl.startsWith("https://")) {
+      avatarUrl = candidateUrl;
+    }
+  }
+
   return {
     id: bot._id || bot.id,
     name: bot.name,
     description: bot.description || "",
-    avatarUrl: bot.avatar_url || bot.avatarUrl || "bot-blue",
+    avatarUrl: avatarUrl,
     status: bot.is_active === false || bot.status === "inactive" ? "inactive" : bot.status || "active",
     trainingProgress: bot.trainingProgress !== undefined ? bot.trainingProgress : 100,
     createdAt: bot.created_at ? new Date(bot.created_at).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN"),
@@ -130,7 +140,7 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
       websiteUrl: bot.knowledgeBase?.websiteUrl || bot.websiteUrl || ""
     },
     widgetConfig: {
-      primaryColor: bot.widgetConfig?.primaryColor || bot.avatar_url || "#2DB87A",
+      primaryColor: bot.widgetConfig?.primaryColor || "#2DB87A",
       displayName: bot.widgetConfig?.displayName || bot.name,
       welcomeMessage: bot.widgetConfig?.welcomeMessage || "Xin chào! Tôi có thể giúp gì cho bạn?",
       placeholderText: bot.widgetConfig?.placeholderText || "Nhập tin nhắn..."
@@ -225,8 +235,19 @@ export const useChatbotStore = create<ChatbotState>()(
       fetchChatbots: async () => {
         set((s) => { s.isLoading = true; s.error = null; });
         try {
-          const res = await fetch("/api/chatbot");
+          const res = await apiFetch("/api/chatbot");
           const resData = await res.json();
+          
+          // If 401, clear the chatbots list (since we cleared auth already
+          if (res.status === 401) {
+            set((s) => {
+              s.chatbots = [];
+              s.isLoading = false;
+              s.error = "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại";
+            });
+            return;
+          }
+          
           if (res.ok && resData.data) {
             const list = Array.isArray(resData.data) ? resData.data : [];
             const mappedList = list.map(mapBackendBotToFrontend);
@@ -260,7 +281,7 @@ export const useChatbotStore = create<ChatbotState>()(
             data.files.forEach((file) => formData.append("files", file));
           }
 
-          const res = await fetch("/api/chatbot", {
+          const res = await apiFetch("/api/chatbot", {
             method: "POST",
             body: formData,
           });
@@ -301,7 +322,7 @@ export const useChatbotStore = create<ChatbotState>()(
           if (data.knowledgeBase) backendUpdates.knowledgeBase = data.knowledgeBase;
           if (data.status) backendUpdates.is_active = (data.status === "active");
 
-          const res = await fetch(`/api/chatbot/${id}`, {
+          const res = await apiFetch(`/api/chatbot/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(backendUpdates),
@@ -333,7 +354,7 @@ export const useChatbotStore = create<ChatbotState>()(
       deleteChatbotApi: async (id) => {
         set((s) => { s.isLoading = true; s.error = null; });
         try {
-          const res = await fetch(`/api/chatbot/${id}`, {
+          const res = await apiFetch(`/api/chatbot/${id}`, {
             method: "DELETE",
           });
           const resData = await res.json();
@@ -373,18 +394,7 @@ export const useChatbotStore = create<ChatbotState>()(
 
 // Hook to check hydration once
 export function useStoreHydration() {
-  const [hydrated, setHydrated] = useState(() => {
-    // Check if already hydrated from localStorage on initial render
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('chatbot-store');
-        return stored !== null || hasHydrated;
-      } catch {
-        return hasHydrated;
-      }
-    }
-    return hasHydrated;
-  });
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     if (hasHydrated) {

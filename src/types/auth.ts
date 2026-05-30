@@ -7,6 +7,14 @@ export interface Quota {
   is_unlimited: boolean;
 }
 
+export interface Chatbot {
+  id: string;
+  name: string;
+  description: string;
+  avatar_url: string;
+  public_token: string;
+}
+
 export interface AuthUser {
   id: string;
   user_id: number;
@@ -16,6 +24,7 @@ export interface AuthUser {
   account_id: string;
   avatar_url?: string;
   quota?: Quota;
+  chatbots?: Chatbot[];
 }
 
 export interface AuthResponse {

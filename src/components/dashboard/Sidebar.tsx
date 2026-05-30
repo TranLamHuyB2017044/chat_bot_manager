@@ -1,11 +1,8 @@
-"use client";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { Avatar } from "@/components/Avatar";
 import {
   LayoutDashboard,
-  Settings,
-  Bell,
   ChevronRight,
   MessageSquare,
   BookOpen,
@@ -13,20 +10,16 @@ import {
   Code,
   ArrowLeft,
   Bot,
-  Plus,
   Home,
   Users
 } from "lucide-react";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 
 export default function Sidebar({ role }: { role: number }) {
-  const pathname = usePathname();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const chatbots = useChatbotStore((s) => s.chatbots);
   const isHydrated = useStoreHydration();
-
-  // Check if we are in admin section
-  const isAdminSection = pathname.startsWith("/admin");
 
   // Determine if we are inside a bot route
   const isBotRoute = pathname.includes("/dashboard/bot/");
@@ -40,14 +33,15 @@ export default function Sidebar({ role }: { role: number }) {
     if (href === "/admin") {
       return pathname === "/admin";
     }
-    if (href === `/dashboard/bot/${botId}`) {
+    if (href.startsWith("/dashboard/bot/")) {
+      // For bot routes, exact match only
       return pathname === href;
     }
     return pathname === href || pathname.startsWith(href + "/");
   };
 
   const handleBackToDashboard = () => {
-    router.push("/dashboard");
+    navigate("/dashboard");
   };
 
   // Bot-specific navigation list
@@ -57,7 +51,6 @@ export default function Sidebar({ role }: { role: number }) {
     { href: `/dashboard/bot/${botId}/knowledge`, label: "Kiến thức", icon: BookOpen },
     { href: `/dashboard/bot/${botId}/widget-design`, label: "Giao diện", icon: Palette },
     { href: `/dashboard/bot/${botId}/embed`, label: "Cài đặt Widget", icon: Code },
-    { href: `/dashboard/bot/${botId}/settings`, label: "Cài đặt", icon: Settings },
   ] : [];
 
   // Global navigation list
@@ -91,9 +84,13 @@ export default function Sidebar({ role }: { role: number }) {
       {isBotRoute && activeBot && (
         <div className="px-3 py-3 border-b border-sidebar-deepest/50 bg-sidebar-active/30">
           <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-btn bg-sidebar-active/50 border border-sidebar-deepest/30">
-            <div className="w-8 h-8 rounded-pill bg-brand/10 border border-brand/20 flex items-center justify-center text-brand font-bold uppercase text-xs shrink-0">
-              {activeBot.name.substring(0, 2)}
-            </div>
+            <Avatar
+              src={activeBot.avatarUrl}
+              alt={activeBot.name}
+              fallbackText={activeBot.name}
+              size="sm"
+              backgroundColor="rgba(45, 184, 122, 0.2)"
+            />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-sidebar-navActive truncate">
                 {activeBot.name}
@@ -123,7 +120,7 @@ export default function Sidebar({ role }: { role: number }) {
             {ADMIN_NAV.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
-                href={href}
+                to={href}
                 className={cn(
                   "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
                   isActive(href)
@@ -154,7 +151,7 @@ export default function Sidebar({ role }: { role: number }) {
             {GLOBAL_NAV.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
-                href={href}
+                to={href}
                 className={cn(
                   "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
                   isActive(href)
@@ -185,7 +182,7 @@ export default function Sidebar({ role }: { role: number }) {
                 {BOT_NAV.map(({ href, label, icon: Icon }) => (
                   <Link
                     key={href}
-                    href={href}
+                    to={href}
                     className={cn(
                       "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
                       isActive(href)
@@ -210,9 +207,9 @@ export default function Sidebar({ role }: { role: number }) {
             )}
           </>
         ) : (
-          // Regular user navigation
+          // Regular user navigation (only show bot nav if in bot route)
           <>
-            {isBotRoute && activeBot ? (
+            {isBotRoute && activeBot && (
               <>
                 <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
                   Quản lý Bot
@@ -220,37 +217,7 @@ export default function Sidebar({ role }: { role: number }) {
                 {BOT_NAV.map(({ href, label, icon: Icon }) => (
                   <Link
                     key={href}
-                    href={href}
-                    className={cn(
-                      "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
-                      isActive(href)
-                        ? "bg-sidebar-active text-sidebar-navActive shadow-sm border-l-2 border-brand pl-2"
-                        : "text-sidebar-navText hover:bg-sidebar-hover hover:text-sidebar-navActive"
-                    )}
-                  >
-                    <Icon
-                      size={15}
-                      className={cn(
-                        "shrink-0 transition-colors duration-200",
-                        isActive(href) ? "text-brand" : "text-sidebar-navSec group-hover:text-sidebar-navText"
-                      )}
-                    />
-                    <span className="truncate">{label}</span>
-                    {isActive(href) && (
-                      <ChevronRight size={12} className="ml-auto text-brand opacity-60" />
-                    )}
-                  </Link>
-                ))}
-              </>
-            ) : (
-              <>
-                <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
-                  Không gian làm việc
-                </p>
-                {GLOBAL_NAV.map(({ href, label, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
+                    to={href}
                     className={cn(
                       "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
                       isActive(href)
