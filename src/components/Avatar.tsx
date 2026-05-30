@@ -25,7 +25,11 @@ export function Avatar({
     lg: "w-16 h-16 text-lg",
   };
 
-  const showImage = src?.startsWith("/") && !error;
+  const isValidUrl = (url: string) => {
+    return url.startsWith("/") || url.startsWith("http://") || url.startsWith("https://");
+  };
+
+  const showImage = src && isValidUrl(src) && !error;
 
   return (
     <div

@@ -1,4 +1,4 @@
-export type Role = 0 | 1 | 2; // 0: Admin, 1: Manager, 2: User
+export type Role = 0 | 4; // 0: Admin, 4: User
 
 export interface Quota {
   plan: number;

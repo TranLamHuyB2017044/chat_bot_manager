@@ -40,8 +40,8 @@ function RootRedirect() {
     if (user.chatbots && user.chatbots.length > 0) {
       return <Navigate to={`/dashboard/bot/${user.chatbots[0].id}`} replace />;
     } else {
-      // Nếu không có chatbot nào, vào trang dashboard
-      return <Navigate to="/dashboard" replace />;
+      // Nếu không có chatbot nào, vào trang tạo bot
+      return <Navigate to="/dashboard/create" replace />;
     }
   }
 }

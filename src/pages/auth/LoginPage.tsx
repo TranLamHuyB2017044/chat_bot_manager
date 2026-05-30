@@ -75,8 +75,8 @@ export default function LoginPage() {
           if (loggedUser.chatbots && loggedUser.chatbots.length > 0) {
             navigate(`/dashboard/bot/${loggedUser.chatbots[0].id}`);
           } else {
-            // Nếu không có chatbot nào, có thể vào trang tạo bot hoặc dashboard
-            navigate("/dashboard");
+            // Nếu không có chatbot nào, vào trang tạo bot
+            navigate("/dashboard/create");
           }
         }
       } else {

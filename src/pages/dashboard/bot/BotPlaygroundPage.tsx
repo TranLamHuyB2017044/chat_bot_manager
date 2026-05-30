@@ -110,35 +110,53 @@ export default function BotPlaygroundPage() {
   if (!bot) return null;
 
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-var(--topbar-height)-3.5rem)] flex flex-col bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card shadow-sm overflow-hidden animate-fadeIn">
+    <div className="max-w-4xl mx-auto h-[calc(100vh-var(--topbar-height))-3.5rem] flex flex-col bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card shadow-sm overflow-hidden animate-fadeIn">
       {/* Playground Header */}
-      <div className="p-4 border-b border-surface-border dark:border-dark-border bg-surface-page/50 dark:bg-dark-page/20 flex justify-between items-center shrink-0">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm"
-            style={{ backgroundColor: bot.widgetConfig.primaryColor }}
+      <div className="p-4 border-b border-surface-border dark:border-dark-border bg-surface-page/50 dark:bg-dark-page/20 flex flex-col gap-3 shrink-0">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-sm overflow-hidden"
+              style={{ backgroundColor: bot.widgetConfig.primaryColor }}
+            >
+              {bot.avatarUrl ? (
+                <img
+                  src={bot.avatarUrl}
+                  alt={bot.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                bot.name.substring(0, 2).toUpperCase()
+              )}
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-text-primary dark:text-textDark-primary">
+                Môi trường thử nghiệm ({bot.name})
+              </h2>
+              <p className="text-[10px] text-text-muted dark:text-textDark-secondary font-medium">
+                Bạn có thể trò chuyện để kiểm tra tri thức của bot
+              </p>
+            </div>
+          </div>
+          
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleReset}
+            icon={<RotateCcw size={13} />}
+            className="text-xs"
           >
-            {bot.name.substring(0, 2).toUpperCase()}
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-text-primary dark:text-textDark-primary">
-              Môi trường thử nghiệm ({bot.name})
-            </h2>
-            <p className="text-[10px] text-text-muted dark:text-textDark-secondary font-medium">
-              Bạn có thể trò chuyện để kiểm tra tri thức của bot
-            </p>
-          </div>
+            Làm mới
+          </Button>
         </div>
-        
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleReset}
-          icon={<RotateCcw size={13} />}
-          className="text-xs"
-        >
-          Làm mới
-        </Button>
+
+        {/* Warning about credits */}
+        <div className="p-3 bg-brand-soft dark:bg-brand-softDark border border-brand/20 rounded-card flex items-center gap-2">
+          <div className="text-brand shrink-0">⚠️</div>
+          <p className="text-xs text-text-secondary dark:text-textDark-primary">
+            Lưu ý: Mỗi tin nhắn trò chuyện sẽ tiêu tốn credits của bạn
+          </p>
+        </div>
       </div>
 
       {/* Chat Messages Body */}
@@ -188,9 +206,9 @@ export default function BotPlaygroundPage() {
               <Bot size={12} />
             </div>
             <div className="bg-white dark:bg-dark-input border border-surface-border dark:border-dark-border rounded-card rounded-tl-none p-3 flex gap-1 items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-text-muted dark:bg-textDark-secondary animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-text-muted dark:bg-textDark-secondary animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-text-muted dark:bg-textDark-secondary animate-bounce" style={{ animationDelay: "300ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-text-muted dark:text-textDark-secondary animate-bounce" style={{ animationDelay: "0ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-text-muted dark:text-textDark-secondary animate-bounce" style={{ animationDelay: "150ms" }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-text-muted dark:text-textDark-secondary animate-bounce" style={{ animationDelay: "300ms" }} />
             </div>
           </div>
         )}
@@ -204,7 +222,7 @@ export default function BotPlaygroundPage() {
       >
         <input
           type="text"
-          placeholder={bot.widgetConfig.placeholderText || "Nhập tin nhắn của bạn..."}
+          placeholder="Nhập tin nhắn của bạn..."
           className="flex-1 px-4 py-2.5 rounded-btn text-xs bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition"
           value={input}
           onChange={(e) => setInput(e.target.value)}

@@ -209,7 +209,7 @@ export default function BotOverviewPage() {
             ))}
           </div>
           
-          <div className="flex-1 w-full relative min-h-[160px] mt-4">
+          <div className="flex-1 w-full relative min-h-40 mt-4">
             <svg className="w-full h-full" viewBox="0 0 700 160" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">

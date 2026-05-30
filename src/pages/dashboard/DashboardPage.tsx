@@ -32,8 +32,13 @@ export default function DashboardPage() {
 
   // Separate effect to check chatbots and redirect non-admin
   useEffect(() => {
-    if (allHydrated && chatbots.length > 0 && !isAdmin) {
-      navigate(`/dashboard/bot/${chatbots[0].id}`);
+    if (allHydrated && !isAdmin) {
+      if (chatbots.length > 0) {
+        navigate(`/dashboard/bot/${chatbots[0].id}`);
+      } else {
+        // If no chatbots, redirect to create page
+        navigate("/dashboard/create");
+      }
     }
   }, [allHydrated, chatbots, isAdmin, navigate]);
 

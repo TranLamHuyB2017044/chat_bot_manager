@@ -45,7 +45,7 @@ export default function UsersPage() {
           id: acc._id || acc.id,
           name: acc.name || "Tài khoản vô danh",
           email: acc.email || `${acc.name?.toLowerCase().replace(/\s+/g, "") || "user"}@example.com`,
-          role: acc.role !== undefined ? acc.role : 2, // 2: User
+          role: acc.role !== undefined ? acc.role : 4, // 4: User
           status: acc.status || "active",
           joined: acc.created_at ? new Date(acc.created_at).toLocaleDateString("vi-VN") : "Gần đây"
         }));
@@ -138,7 +138,7 @@ export default function UsersPage() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
+        <div className="relative flex-1 min-w-50 max-w-xs">
           <Search
             size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted dark:text-textDark-muted"

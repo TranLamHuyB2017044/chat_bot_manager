@@ -4,6 +4,14 @@ import { immer } from "zustand/middleware/immer";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
+export const DEFAULT_AVATARS = [
+  { id: "/chatbot_logo.jpeg", color: "#2DB87A", label: "Mặc định", isImage: true }, // DEFAULT = 0
+  { id: "bot-blue", color: "#3B82F6", label: "Robot Xanh" }, // BLUE = 1
+  { id: "bot-green", color: "#10B981", label: "Robot Lục" }, // GREEN = 2
+  { id: "bot-purple", color: "#8B5CF6", label: "Robot Tím" }, // PURPLE = 3
+  { id: "bot-pink", color: "#EC4899", label: "Robot Hồng" }, // PINK = 4
+];
+
 export interface KnowledgeFile {
   name: string;
   size: number;
@@ -18,7 +26,7 @@ export interface WidgetConfig {
   primaryColor: string;
   displayName: string;
   welcomeMessage: string;
-  placeholderText: string;
+  placeholderText?: string;
 }
 
 export interface Chatbot {
@@ -79,6 +87,8 @@ interface ChatbotState {
     name: string;
     description?: string;
     avatarUrl?: string;
+    color?: number;
+    greeting?: string;
     workspaceName?: string;
     files?: File[];
   }) => Promise<string | null>;
@@ -122,6 +132,12 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
     }
   }
 
+  // Get primary color from bot color index
+  let primaryColor = "#2DB87A";
+  if (bot.color !== undefined && bot.color >= 0 && bot.color < DEFAULT_AVATARS.length) {
+    primaryColor = DEFAULT_AVATARS[bot.color].color;
+  }
+
   return {
     id: bot._id || bot.id,
     name: bot.name,
@@ -140,10 +156,10 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
       websiteUrl: bot.knowledgeBase?.websiteUrl || bot.websiteUrl || ""
     },
     widgetConfig: {
-      primaryColor: bot.widgetConfig?.primaryColor || "#2DB87A",
-      displayName: bot.widgetConfig?.displayName || bot.name,
-      welcomeMessage: bot.widgetConfig?.welcomeMessage || "Xin chào! Tôi có thể giúp gì cho bạn?",
-      placeholderText: bot.widgetConfig?.placeholderText || "Nhập tin nhắn..."
+      primaryColor: primaryColor,
+      displayName: bot.name,
+      welcomeMessage: bot.greeting || "Xin chào! Tôi có thể giúp gì cho bạn?",
+      placeholderText: "Nhập tin nhắn..."
     },
     workspaceId: bot.workspace_id || bot.workspaceId || bot._id || bot.id,
     publicToken: bot.public_token || bot.publicToken || bot.id
@@ -276,6 +292,8 @@ export const useChatbotStore = create<ChatbotState>()(
           formData.append("name", data.name);
           if (data.description) formData.append("description", data.description);
           if (data.avatarUrl) formData.append("avatar_url", data.avatarUrl);
+          if (data.color !== undefined) formData.append("color", data.color.toString());
+          if (data.greeting) formData.append("greeting", data.greeting);
           if (data.workspaceName) formData.append("workspace_name", data.workspaceName);
           if (data.files) {
             data.files.forEach((file) => formData.append("files", file));
@@ -287,8 +305,8 @@ export const useChatbotStore = create<ChatbotState>()(
           });
           const resData = await res.json();
           if (res.ok && resData.data) {
-            // Backend might return chatbot in different shapes
-            const botData = resData.data.chatbot || resData.data;
+            // Backend returns chatbot in resData.data.chatbot
+            const botData = resData.data.chatbot;
             const mappedBot = mapBackendBotToFrontend(botData);
             set((s) => {
               s.chatbots.push(mappedBot);

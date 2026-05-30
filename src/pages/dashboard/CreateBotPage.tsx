@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { toast } from "@/components/ui/Sonner";
-import { useChatbotStore, KnowledgeFile } from "@/store/chatbotStore";
+import { Avatar } from "@/components/Avatar";
+import { useChatbotStore, KnowledgeFile, DEFAULT_AVATARS } from "@/store/chatbotStore";
 import {
   ArrowRight,
   ArrowLeft,
@@ -17,14 +18,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const DEFAULT_AVATARS = [
-  { id: "/chatbot_logo.jpeg", color: "#2DB87A", label: "Mặc định", isImage: true },
-  { id: "bot-blue", color: "#3B82F6", label: "Robot Xanh" },
-  { id: "bot-green", color: "#10B981", label: "Robot Lục" },
-  { id: "bot-purple", color: "#8B5CF6", label: "Robot Tím" },
-  { id: "bot-pink", color: "#EC4899", label: "Robot Hồng" },
-];
-
 export default function CreateBotPage() {
   const navigate = useNavigate();
   const { createChatbotApi, updateChatbotApi } = useChatbotStore();
@@ -34,18 +27,16 @@ export default function CreateBotPage() {
   // Step 1: Basic Info
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [avatar, setAvatar] = useState("/chatbot_logo.jpeg");
+  const [colorIndex, setColorIndex] = useState(0);
 
   // Step 2: Knowledge Base
   const [files, setFiles] = useState<KnowledgeFile[]>([]);
   const [actualFiles, setActualFiles] = useState<File[]>([]);
-  const [kbText, setKbText] = useState("");
   const [websiteUrl] = useState("");
 
   // Step 3: Widget Customizer
-  const [primaryColor, setPrimaryColor] = useState("#2DB87A");
-  const [welcomeMessage, setWelcomeMessage] = useState("Xin chào! Tôi có thể giúp gì cho bạn hôm nay?");
-  const [placeholderText, setPlaceholderText] = useState("Nhập tin nhắn...");
+  const [greeting, setGreeting] = useState("Xin chào! Tôi có thể giúp gì cho bạn hôm nay?");
+  const placeholderText = "Nhập tin nhắn...";
 
   // Step 4: Training Simulation
   const [isTraining, setIsTraining] = useState(false);
@@ -73,6 +64,17 @@ export default function CreateBotPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const uploadedFiles = Array.from(e.target.files);
+    
+    // Limit total files to 5
+    const maxFiles = 5;
+    const currentFilesCount = files.length;
+    const newFilesCount = uploadedFiles.length;
+    
+    if (currentFilesCount + newFilesCount > maxFiles) {
+      toast.error(`Tối đa chỉ cho phép ${maxFiles} file`);
+      return;
+    }
+    
     setActualFiles((prev) => [...prev, ...uploadedFiles]);
 
     uploadedFiles.forEach((file) => {
@@ -106,43 +108,40 @@ export default function CreateBotPage() {
 
   // Start training bot
   const handleStartTraining = async () => {
-    setIsTraining(true);
+    try {
+      setIsTraining(true);
 
-    const newBotId = await createChatbotApi({
-      name,
-      description,
-      avatarUrl: avatar === "custom" ? primaryColor : avatar,
-      workspaceName: name, // Workspace name maps to bot name
-      files: actualFiles,
-    });
+      const newBotId = await createChatbotApi({
+        name,
+        description,
+        avatarUrl: DEFAULT_AVATARS[colorIndex].id,
+        color: colorIndex,
+        greeting,
+        workspaceName: name, // Workspace name maps to bot name
+        files: actualFiles,
+      });
 
-    if (!newBotId) {
-      toast.error("Tạo chatbot thất bại. Vui lòng thử lại!");
-      setIsTraining(false);
-      return;
-    }
-
-    // Animate progress bar
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      setTrainingProgress(progress);
-
-      if (progress >= 100) {
-        clearInterval(interval);
-        // Sync widget configurations by updating
-        updateChatbotApi(newBotId, {
-          widgetConfig: {
-            primaryColor,
-            displayName: name,
-            welcomeMessage,
-            placeholderText,
-          }
-        }).then(() => {
-          navigate(`/dashboard/bot/${newBotId}/success`);
-        });
+      if (!newBotId) {
+        toast.error("Tạo chatbot thất bại. Vui lòng thử lại!");
+        setIsTraining(false);
+        return;
       }
-    }, 300);
+
+      // Animate progress bar
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        setTrainingProgress(progress);
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          navigate(`/dashboard/bot/${newBotId}/success`);
+        }
+      }, 300);
+    } catch (error: any) {
+      toast.error(error.message || "Có lỗi xảy ra. Vui lòng thử lại!");
+      setIsTraining(false);
+    }
   };
 
   return (
@@ -177,7 +176,7 @@ export default function CreateBotPage() {
                       : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
                 )}
               >
-                {step > s.num ? <Check size={14} className="stroke-[3]" /> : s.num}
+                {step > s.num ? <Check size={14} className="stroke-3" /> : s.num}
               </div>
               <span className={cn(
                 "text-[10px] font-semibold transition-colors duration-300",
@@ -189,7 +188,7 @@ export default function CreateBotPage() {
             {s.num < 4 && (
               <div
                 className={cn(
-                  "h-[2px] flex-1 mx-2 transition-all duration-300",
+                  "h-0.5 flex-1 mx-2 transition-all duration-300",
                   step > s.num ? "bg-success" : "bg-surface-border dark:bg-dark-border"
                 )}
               />
@@ -258,17 +257,16 @@ export default function CreateBotPage() {
                     Chọn màu nhận diện chatbot
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                    {DEFAULT_AVATARS.map((av) => (
+                    {DEFAULT_AVATARS.map((av, index) => (
                       <button
                         key={av.id}
                         type="button"
                         onClick={() => {
-                          setAvatar(av.id);
-                          setPrimaryColor(av.color);
+                          setColorIndex(index);
                         }}
                         className={cn(
                           "flex items-center gap-2 p-3 rounded-btn border transition-all text-left cursor-pointer",
-                          avatar === av.id
+                          colorIndex === index
                             ? "border-brand bg-brand/5 dark:bg-brand/10 ring-2 ring-brand/25"
                             : "border-surface-border dark:border-dark-border hover:bg-surface-input dark:hover:bg-dark-input"
                         )}
@@ -288,38 +286,6 @@ export default function CreateBotPage() {
                         </span>
                       </button>
                     ))}
-
-                    {/* Custom Color Option */}
-                    <div
-                      className={cn(
-                        "flex items-center gap-2 p-3 rounded-btn border transition-all text-left relative",
-                        avatar === "custom"
-                          ? "border-brand bg-brand/5 dark:bg-brand/10 ring-2 ring-brand/25"
-                          : "border-surface-border dark:border-dark-border hover:bg-surface-input dark:hover:bg-dark-input"
-                      )}
-                    >
-                      <input
-                        type="color"
-                        value={avatar === "custom" ? primaryColor : "#2DB87A"}
-                        onChange={(e) => {
-                          setAvatar("custom");
-                          setPrimaryColor(e.target.value);
-                        }}
-                        className="w-5 h-5 rounded-full cursor-pointer border border-surface-border dark:border-dark-border overflow-hidden bg-transparent shrink-0"
-                        title="Chọn màu tùy chỉnh"
-                      />
-                      <div
-                        className="flex flex-col min-w-0 flex-1 cursor-pointer select-none"
-                        onClick={() => setAvatar("custom")}
-                      >
-                        <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary truncate">
-                          Tự chọn màu
-                        </span>
-                        <span className="text-[9px] font-mono text-text-muted dark:text-textDark-secondary truncate leading-none mt-0.5">
-                          {avatar === "custom" ? primaryColor : "Chọn mã màu"}
-                        </span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -331,22 +297,22 @@ export default function CreateBotPage() {
                 {/* File upload zone */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
-                    Tải lên file tài liệu (PDF, TXT, DOCX, CSV)
+                    Tải lên file tài liệu (png, jpg, jpeg, pdf, md, docx, doc)
                   </label>
                   <div className="border-2 border-dashed border-surface-border dark:border-dark-border hover:border-brand/50 dark:hover:border-brand/50 rounded-card p-6 flex flex-col items-center justify-center cursor-pointer transition-colors relative">
                     <input
                       type="file"
-                      multiple
-                      accept=".pdf,.txt,.docx,.csv"
+                      multiple={true}
+                      accept=".png,.jpg,.jpeg,.pdf,.md,.docx,.doc"
                       onChange={handleFileUpload}
                       className="absolute inset-0 opacity-0 cursor-pointer"
                     />
                     <Upload size={32} className="text-text-muted dark:text-textDark-secondary mb-2 animate-bounce" />
                     <span className="text-xs font-bold text-text-primary dark:text-textDark-primary">
-                      Kéo thả hoặc nhấp để chọn file
+                      Kéo thả hoặc nhấp để chọn nhiều file
                     </span>
                     <span className="text-[10px] text-text-muted dark:text-textDark-secondary mt-1">
-                      Hỗ trợ tối đa 10MB mỗi file
+                      Hỗ trợ tối đa 5MB mỗi file, tối đa 5 file
                     </span>
                   </div>
                 </div>
@@ -396,22 +362,7 @@ export default function CreateBotPage() {
                   </div>
                 )}
 
-                {/* Paste Text Directly */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
-                    Hoặc nhập kiến thức dạng văn bản trực tiếp
-                  </label>
-                  <textarea
-                    placeholder="Dán hoặc gõ văn bản chi tiết về doanh nghiệp, FAQ hoặc sản phẩm của bạn..."
-                    rows={4}
-                    className="w-full px-3 py-2.5 rounded-btn text-sm bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition resize-none"
-                    value={kbText}
-                    onChange={(e) => setKbText(e.target.value)}
-                  />
-                  <p className="text-[10px] text-text-muted dark:text-textDark-secondary">
-                    Ký tự hiện tại: {kbText.length}
-                  </p>
-                </div>
+
               </div>
             )}
 
@@ -422,33 +373,27 @@ export default function CreateBotPage() {
                 <div className="space-y-4">
                   <Input
                     label="Lời chào mừng"
-                    value={welcomeMessage}
-                    onChange={(e) => setWelcomeMessage(e.target.value)}
-                  />
-
-                  <Input
-                    label="Gợi ý ô nhập tin nhắn"
-                    value={placeholderText}
-                    onChange={(e) => setPlaceholderText(e.target.value)}
+                    value={greeting}
+                    onChange={(e) => setGreeting(e.target.value)}
                   />
                 </div>
 
                 {/* Live Preview Container */}
-                <div className="flex flex-col border border-surface-border dark:border-dark-border rounded-card bg-surface-page dark:bg-dark-page p-4 items-center justify-center min-h-[300px]">
+                <div className="flex flex-col border border-surface-border dark:border-dark-border rounded-card bg-surface-page dark:bg-dark-page p-4 items-center justify-center min-h-75">
                   <p className="text-[10px] font-bold text-text-muted dark:text-textDark-secondary mb-4 uppercase tracking-widest">
                     Xem trước Widget
                   </p>
 
                   {/* Chat Box Mockup */}
-                  <div className="w-full max-w-[280px] bg-white dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card shadow-lg flex flex-col overflow-hidden">
+                  <div className="w-full max-w-70 bg-white dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card shadow-lg flex flex-col overflow-hidden">
                     {/* Header */}
                     <div
                       className="p-3 text-white flex items-center gap-2"
-                      style={{ backgroundColor: primaryColor }}
+                      style={{ backgroundColor: DEFAULT_AVATARS[colorIndex].color }}
                     >
                       <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold overflow-hidden shrink-0 bg-white/20">
-                        {avatar.startsWith("/") ? (
-                          <img src={avatar} alt={name || "AI"} className="w-full h-full object-cover" />
+                        {DEFAULT_AVATARS[colorIndex].isImage ? (
+                          <img src={DEFAULT_AVATARS[colorIndex].id} alt={name || "AI"} className="w-full h-full object-cover" />
                         ) : (
                           (name || "AI").substring(0, 2).toUpperCase()
                         )}
@@ -465,14 +410,14 @@ export default function CreateBotPage() {
                     <div className="p-3 space-y-2 h-36 overflow-y-auto bg-slate-50 dark:bg-neutral-900/50">
                       <div className="flex gap-1.5 items-start">
                         <div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold overflow-hidden shrink-0 bg-slate-200 dark:bg-zinc-800 text-text-muted">
-                          {avatar.startsWith("/") ? (
-                            <img src={avatar} alt="AI" className="w-full h-full object-cover" />
+                          {DEFAULT_AVATARS[colorIndex].isImage ? (
+                            <img src={DEFAULT_AVATARS[colorIndex].id} alt="AI" className="w-full h-full object-cover" />
                           ) : (
                             "AI"
                           )}
                         </div>
                         <div className="bg-white dark:bg-zinc-800 border border-surface-border dark:border-dark-border rounded-btn p-2 text-[10px] text-text-secondary dark:text-textDark-primary leading-relaxed max-w-[85%]">
-                          {welcomeMessage}
+                          {greeting}
                         </div>
                       </div>
                     </div>
@@ -484,7 +429,7 @@ export default function CreateBotPage() {
                       </div>
                       <button
                         className="w-6 h-6 rounded-full text-white flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: primaryColor }}
+                        style={{ backgroundColor: DEFAULT_AVATARS[colorIndex].color }}
                         type="button"
                       >
                         <ArrowRight size={10} />
@@ -516,11 +461,11 @@ export default function CreateBotPage() {
                     </p>
                     <div className="flex items-center gap-3">
                       <Avatar
-                        src={avatar}
+                        src={DEFAULT_AVATARS[colorIndex].id}
                         alt={name || "Chatbot"}
                         fallbackText={name || "Chatbot"}
                         size="md"
-                        backgroundColor={primaryColor}
+                        backgroundColor={DEFAULT_AVATARS[colorIndex].color}
                       />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-text-primary dark:text-textDark-primary truncate">{name}</p>
@@ -544,10 +489,6 @@ export default function CreateBotPage() {
                       <div className="flex justify-between">
                         <span>Website crawl:</span>
                         <span className="font-semibold">{websiteUrl ? "1 website" : "Không có"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Độ dài văn bản nhập:</span>
-                        <span className="font-semibold">{kbText.length} ký tự</span>
                       </div>
                     </div>
                   </div>

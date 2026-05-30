@@ -69,10 +69,10 @@ export default function TrainingSuccessPage() {
         {[1, 2, 3, 4].map((num) => (
           <div key={num} className="flex items-center last:flex-none flex-1">
             <div className="w-7 h-7 rounded-full bg-brand text-white flex items-center justify-center font-bold text-xs shadow-sm">
-              <Check size={12} className="stroke-[3]" />
+              <Check size={12} className="stroke-3" />
             </div>
             {num < 4 && (
-              <div className="h-[2px] bg-brand flex-1 mx-2" />
+              <div className="h-0.5 bg-brand flex-1 mx-2" />
             )}
           </div>
         ))}
@@ -99,10 +99,18 @@ export default function TrainingSuccessPage() {
         <div className="w-full p-4 bg-surface-page dark:bg-dark-page border border-surface-border dark:border-dark-border rounded-card flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-inner"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-inner overflow-hidden"
               style={{ backgroundColor: bot.widgetConfig.primaryColor }}
             >
-              {bot.name.substring(0, 2).toUpperCase()}
+              {bot.avatarUrl ? (
+                <img
+                  src={bot.avatarUrl}
+                  alt={bot.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                bot.name.substring(0, 2).toUpperCase()
+              )}
             </div>
             <div className="text-left">
               <p className="text-xs font-bold text-text-primary dark:text-textDark-primary">{bot.name}</p>

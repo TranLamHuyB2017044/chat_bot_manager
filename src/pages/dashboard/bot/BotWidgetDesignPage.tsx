@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useChatbotStore, WidgetConfig, useStoreHydration } from "@/store/chatbotStore";
+import { useChatbotStore, WidgetConfig, useStoreHydration, DEFAULT_AVATARS } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ArrowRight, Palette, Loader2, Sparkles } from "lucide-react";
@@ -13,20 +13,19 @@ export default function BotWidgetDesignPage() {
   const [saving, setSaving] = useState(false);
 
   // Widget config form states
-  const [primaryColor, setPrimaryColor] = useState("#2DB87A");
+  const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [displayName, setDisplayName] = useState("");
   const [welcomeMessage, setWelcomeMessage] = useState("");
-  const [placeholderText, setPlaceholderText] = useState("");
 
   const bot = chatbots.find((b) => b.id === botId);
 
-  // Initialize form fields once bot is loaded
+  // Find selected color index based on bot's primaryColor
   useEffect(() => {
     if (bot) {
-      setPrimaryColor(bot.widgetConfig.primaryColor || "#2DB87A");
+      const colorIndex = DEFAULT_AVATARS.findIndex(av => av.color === bot.widgetConfig.primaryColor);
+      setSelectedColorIndex(colorIndex >= 0 ? colorIndex : 0);
       setDisplayName(bot.widgetConfig.displayName || bot.name);
       setWelcomeMessage(bot.widgetConfig.welcomeMessage || "Xin chào!");
-      setPlaceholderText(bot.widgetConfig.placeholderText || "Nhập tin nhắn...");
     }
   }, [bot]);
 
@@ -42,13 +41,14 @@ export default function BotWidgetDesignPage() {
 
   if (!bot) return null;
 
+  const primaryColor = DEFAULT_AVATARS[selectedColorIndex].color;
+
   const handleSave = async () => {
     setSaving(true);
     const newConfig: WidgetConfig = {
       primaryColor,
       displayName,
       welcomeMessage,
-      placeholderText,
     };
 
     const updatedBot = {
@@ -83,24 +83,29 @@ export default function BotWidgetDesignPage() {
           </div>
 
           <div className="space-y-4">
-            {/* Color picker */}
+            {/* Color picker (enum selection) */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-text-secondary dark:text-textDark-secondary">
                 Màu chủ đạo Widget (Primary Color)
               </label>
-              <div className="flex gap-3 items-center">
-                <input
-                  type="color"
-                  value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-surface-border dark:border-dark-border overflow-hidden bg-transparent shrink-0"
-                />
-                <Input
-                  value={primaryColor}
-                  onChange={(e) => setPrimaryColor(e.target.value)}
-                  className="font-mono text-xs uppercase"
-                  placeholder="#2DB87A"
-                />
+              <div className="grid grid-cols-5 gap-2">
+                {DEFAULT_AVATARS.map((av, index) => (
+                  <button
+                    key={av.id}
+                    type="button"
+                    onClick={() => setSelectedColorIndex(index)}
+                    className={`p-2 rounded-btn border-2 transition-all cursor-pointer ${
+                      selectedColorIndex === index
+                        ? "border-brand ring-2 ring-brand/25"
+                        : "border-surface-border dark:border-dark-border hover:border-brand/50"
+                    }`}
+                  >
+                    <div
+                      className="w-full aspect-square rounded"
+                      style={{ backgroundColor: av.color }}
+                    />
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -122,13 +127,6 @@ export default function BotWidgetDesignPage() {
                 className="w-full px-3 py-2.5 rounded-btn text-xs bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition resize-none"
               />
             </div>
-
-            <Input
-              label="Gợi ý ô nhập liệu tin nhắn (Placeholder)"
-              value={placeholderText}
-              onChange={(e) => setPlaceholderText(e.target.value)}
-              className="text-xs"
-            />
           </div>
         </div>
 
@@ -147,7 +145,7 @@ export default function BotWidgetDesignPage() {
       </div>
 
       {/* Live Preview panel */}
-      <div className="flex flex-col border border-surface-border dark:border-dark-border rounded-card bg-surface-page dark:bg-dark-page p-6 items-center justify-center min-h-[450px]">
+      <div className="flex flex-col border border-surface-border dark:border-dark-border rounded-card bg-surface-page dark:bg-dark-page p-6 items-center justify-center min-h-112.5">
         <p className="text-[10px] font-bold text-text-muted dark:text-textDark-secondary mb-6 uppercase tracking-wider">
           Xem trước Widget thực tế
         </p>
@@ -198,7 +196,7 @@ export default function BotWidgetDesignPage() {
           {/* Footer Input */}
           <div className="p-3 border-t border-surface-border dark:border-dark-border bg-white dark:bg-dark-card flex items-center gap-2">
             <div className="flex-1 bg-surface-input dark:bg-dark-input px-3 py-2 rounded-pill text-[10px] text-text-muted dark:text-textDark-secondary border border-surface-border/50 dark:border-dark-border/50">
-              {placeholderText}
+              Nhập tin nhắn...
             </div>
             <button
               className="w-8 h-8 rounded-full text-white flex items-center justify-center shrink-0 shadow-md transition-transform hover:scale-105"
