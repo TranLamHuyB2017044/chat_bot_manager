@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BACKEND_URL = "https://api-ocr.bittechx.cloud";
+const BACKEND_URL = process.env.BASE_URL;
 
 export async function POST(req: NextRequest) {
   const refreshToken = req.cookies.get("bt_refresh_token")?.value;

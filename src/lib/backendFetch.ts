@@ -14,7 +14,7 @@ export async function backendFetch(
   const apiKey = cookieStore.get("bt_api_key")?.value;
 
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(options.headers as Record<string, string>),
   };
 

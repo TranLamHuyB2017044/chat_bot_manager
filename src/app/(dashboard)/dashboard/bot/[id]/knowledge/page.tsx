@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useChatbotStore, KnowledgeFile, useStoreHydration } from "@/store/chatbotStore";
+import { useChatbotStore, KnowledgeFile, useStoreHydration, mapBackendBotToFrontend } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -44,6 +44,34 @@ export default function BotKnowledgePage() {
     }
   }, [bot]);
 
+  // Fetch actual RAG documents on mount/hydration
+  useEffect(() => {
+    if (bot && isHydrated) {
+      const workspaceId = bot.workspaceId || bot.id;
+      fetch(`/api/rag/workspaces/${workspaceId}/documents`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.data) {
+            const mappedDocs = data.data.map((d: any) => ({
+              name: d.filename || d.name,
+              size: d.size || 0,
+              progress: d.status === "ready" ? 100 : 50,
+              type: (d.filename || d.name || "").split(".").pop() || "txt",
+              _id: d._id,
+              status: d.status
+            }));
+            updateChatbot(botId, {
+              knowledgeBase: {
+                ...bot.knowledgeBase,
+                files: mappedDocs,
+              }
+            });
+          }
+        })
+        .catch((err) => console.error("Error fetching documents:", err));
+    }
+  }, [botId, isHydrated]);
+
   if (!isHydrated || !bot) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
@@ -52,89 +80,118 @@ export default function BotKnowledgePage() {
     );
   }
 
-  const syncBotToServer = async (updatedBot: any) => {
+  const handleTextSave = async () => {
+    if (!bot) return;
     setIsUpdating(true);
     try {
-      await fetch("/api/bots", {
-        method: "POST",
+      const res = await fetch(`/api/chatbot/${botId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedBot),
+        body: JSON.stringify({
+          knowledgeBase: {
+            ...bot.knowledgeBase,
+            text: inputText,
+          }
+        }),
       });
-      
-      // Simulate brief retraining
-      updateChatbot(botId, { status: "training", trainingProgress: 0 });
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 25;
-        updateChatbot(botId, { trainingProgress: progress });
-        if (progress >= 100) {
-          clearInterval(interval);
-          updateChatbot(botId, { status: "active", trainingProgress: 100 });
-          // Sync final active state
-          fetch("/api/bots", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...updatedBot, status: "active", trainingProgress: 100 }),
-          });
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.data) {
+          const mappedBot = mapBackendBotToFrontend(resData.data);
+          updateChatbot(botId, mappedBot);
+          alert("Lưu và đồng bộ văn bản tri thức thành công!");
         }
-      }, 300);
-    } catch (e) {
-      console.error("Error syncing knowledge update:", e);
+      } else {
+        alert("Lưu tri thức dạng văn bản thất bại!");
+      }
+    } catch (err) {
+      console.error("Error saving text knowledge:", err);
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const handleTextSave = () => {
-    if (!bot) return;
-    const updated = {
-      ...bot,
-      knowledgeBase: {
-        ...bot.knowledgeBase,
-        text: inputText,
-      },
-    };
-    updateChatbot(botId, { knowledgeBase: updated.knowledgeBase });
-    syncBotToServer(updated);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !bot) return;
     const uploaded = Array.from(e.target.files);
+    
+    setIsUpdating(true);
+    try {
+      const workspaceId = bot.workspaceId || bot.id;
+      const formData = new FormData();
+      uploaded.forEach((file) => {
+        formData.append("files", file);
+      });
 
-    const newFiles: KnowledgeFile[] = uploaded.map((file) => ({
-      name: file.name,
-      size: file.size,
-      progress: 100,
-      type: file.name.split(".").pop() || "txt",
-    }));
+      const res = await fetch(`/api/rag/workspaces/${workspaceId}/upload`, {
+        method: "POST",
+        body: formData,
+      });
 
-    const mergedFiles = [...bot.knowledgeBase.files, ...newFiles];
-    const updated = {
-      ...bot,
-      knowledgeBase: {
-        ...bot.knowledgeBase,
-        files: mergedFiles,
-        text: bot.knowledgeBase.text + "\n" + newFiles.map(f => `Nội dung tài liệu ${f.name}`).join("\n"),
-      },
-    };
-
-    updateChatbot(botId, { knowledgeBase: updated.knowledgeBase });
-    syncBotToServer(updated);
+      if (res.ok) {
+        // Retrain status mockup for visual confirmation
+        updateChatbot(botId, { status: "training", trainingProgress: 30 });
+        
+        // Refresh documents list
+        const docRes = await fetch(`/api/rag/workspaces/${workspaceId}/documents`);
+        const docData = await docRes.json();
+        if (docRes.ok && docData.data) {
+          const mappedDocs = docData.data.map((d: any) => ({
+            name: d.filename || d.name,
+            size: d.size || 0,
+            progress: d.status === "ready" ? 100 : 50,
+            type: (d.filename || d.name || "").split(".").pop() || "txt",
+            _id: d._id,
+            status: d.status
+          }));
+          updateChatbot(botId, {
+            status: "active",
+            trainingProgress: 100,
+            knowledgeBase: {
+              ...bot.knowledgeBase,
+              files: mappedDocs,
+            }
+          });
+          alert("Đã tải tài liệu lên và đồng bộ cơ sở tri thức!");
+        }
+      } else {
+        alert("Không thể tải tài liệu lên. Vui lòng thử lại!");
+      }
+    } catch (err) {
+      console.error("Error uploading RAG documents:", err);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
-  const handleDeleteResource = (name: string) => {
+  const handleDeleteResource = async (name: string) => {
     if (!bot) return;
     const filteredFiles = bot.knowledgeBase.files.filter((f) => f.name !== name);
-    const updated = {
-      ...bot,
-      knowledgeBase: {
-        ...bot.knowledgeBase,
-        files: filteredFiles,
-      },
-    };
-    updateChatbot(botId, { knowledgeBase: updated.knowledgeBase });
-    syncBotToServer(updated);
+    setIsUpdating(true);
+    try {
+      const res = await fetch(`/api/chatbot/${botId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          knowledgeBase: {
+            ...bot.knowledgeBase,
+            files: filteredFiles,
+          }
+        }),
+      });
+      if (res.ok) {
+        const resData = await res.json();
+        if (resData.data) {
+          const mappedBot = mapBackendBotToFrontend(resData.data);
+          updateChatbot(botId, mappedBot);
+          alert("Đã xóa tài liệu khỏi cơ sở tri thức!");
+        }
+      }
+    } catch (err) {
+      console.error("Error deleting knowledge resource:", err);
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleUrlCrawl = () => {
@@ -149,7 +206,7 @@ export default function BotKnowledgePage() {
     ];
 
     let logIdx = 0;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       if (logIdx < logs.length) {
         setCrawlerLogs((prev) => [...prev, logs[logIdx]]);
         logIdx++;
@@ -168,18 +225,33 @@ export default function BotKnowledgePage() {
         const mergedFiles = [...bot.knowledgeBase.files, newFile];
         const textAppend = `\nThông tin thu thập từ trang ${inputUrl}: Nền tảng chatbot thông minh hỗ trợ CSS Shadow DOM.`;
         
-        const updated = {
-          ...bot,
-          knowledgeBase: {
-            ...bot.knowledgeBase,
-            files: mergedFiles,
-            text: bot.knowledgeBase.text + textAppend,
-          },
-        };
-        
-        setInputUrl("");
-        updateChatbot(botId, { knowledgeBase: updated.knowledgeBase });
-        syncBotToServer(updated);
+        setIsUpdating(true);
+        try {
+          const res = await fetch(`/api/chatbot/${botId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              knowledgeBase: {
+                ...bot.knowledgeBase,
+                files: mergedFiles,
+                text: bot.knowledgeBase.text + textAppend,
+              }
+            }),
+          });
+          if (res.ok) {
+            const resData = await res.json();
+            if (resData.data) {
+              const mappedBot = mapBackendBotToFrontend(resData.data);
+              updateChatbot(botId, mappedBot);
+              alert("Đã crawl và đồng bộ URL tri thức!");
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsUpdating(false);
+          setInputUrl("");
+        }
       }
     }, 600);
   };

@@ -52,19 +52,10 @@ export default function BotEmbedPage() {
     );
   }
 
-  // Get local dev CDN URL or fallback
-  const cdnUrl = typeof window !== "undefined"
-    ? `${window.location.protocol}//${window.location.host}/widget.js?botId=${botId}`
-    : `https://cdn.BitTech.com/widget.js?botId=${botId}`;
-
-  // Script snippets
-  const embedCodeSingle = `<script src="${cdnUrl}" defer></script>`;
-  const embedCodeDouble = `<script>
-  window.BitTechWidgetConfig = {
-    botId: "${botId}"
-  };
-</script>
-<script src="${typeof window !== "undefined" ? `${window.location.protocol}//${window.location.host}/widget.js` : "https://cdn.BitTech.com/widget.js"}" defer></script>`;
+  // Get public token and embed code from bot
+  const publicToken = (bot as any).publicToken || (bot as any).public_token || bot.id;
+  const embedCodeSingle = (bot as any).embedCode || 
+    `<script src="https://api-ocr.bittechx.cloud/chatbot-embed.js" data-chatbot-id="${bot.id}" data-public-token="${publicToken}"></script>`;
 
   const activeEmbedCode = activeTab === "nextjs" ? `import Script from 'next/script';
 
@@ -72,7 +63,9 @@ export default function ChatWidget() {
   return (
     <>
       <Script
-        src="${cdnUrl}"
+        src="https://api-ocr.bittechx.cloud/chatbot-embed.js"
+        data-chatbot-id="${bot.id}"
+        data-public-token="${publicToken}"
         strategy="lazyOnload"
       />
     </>

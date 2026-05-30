@@ -5,18 +5,27 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Bot, Plus, MessageSquare, Calendar, ArrowRight, Loader2, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/Sonner";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { chatbots, deleteChatbot, setActiveChatbotId } = useChatbotStore();
+  const { chatbots, fetchChatbots, deleteChatbotApi, setActiveChatbotId, isLoading, error } = useChatbotStore();
   const isHydrated = useStoreHydration();
+
+  const testToasts = () => {
+    toast.success("Thao tác thành công!", { description: "Dữ liệu đã được cập nhật" });
+    toast.warning("Cảnh báo!", { description: "Vui lòng kiểm tra lại thông tin" });
+    toast.error("Lỗi!", { description: "Đã xảy ra lỗi khi thực hiện thao tác" });
+    toast.info("Thông tin!", { description: "Thông báo hệ thống" });
+  };
 
   // Sync state on mount
   useEffect(() => {
     if (isHydrated) {
       setActiveChatbotId(null); // Reset active chatbot context when on global dashboard
+      fetchChatbots();
     }
-  }, [isHydrated, setActiveChatbotId]);
+  }, [isHydrated, setActiveChatbotId, fetchChatbots]);
 
   const handleCreateBot = () => {
     router.push("/dashboard/create");
@@ -27,14 +36,14 @@ export default function DashboardPage() {
     router.push(`/dashboard/bot/${id}`);
   };
 
-  const handleDeleteBot = (e: React.MouseEvent, id: string) => {
+  const handleDeleteBot = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (confirm("Bạn có chắc chắn muốn xóa chatbot này không? Mọi dữ liệu tri thức sẽ bị mất.")) {
-      deleteChatbot(id);
+      await deleteChatbotApi(id);
     }
   };
 
-  if (!isHydrated) {
+  if (!isHydrated || isLoading) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="animate-spin text-brand" size={32} />
@@ -55,14 +64,22 @@ export default function DashboardPage() {
               Quản lý, huấn luyện và lấy mã nhúng widget cho từng chatbot
             </p>
           </div>
-          <Button
-            variant="primary"
-            onClick={handleCreateBot}
-            icon={<Plus size={16} />}
-            className="shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0"
-          >
-            Tạo Chatbot Mới
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={testToasts}
+            >
+              Test Toast
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreateBot}
+              icon={<Plus size={16} />}
+              className="shadow-md transition-all hover:-translate-y-0.5 active:translate-y-0"
+            >
+              Tạo Chatbot Mới
+            </Button>
+          </div>
         </div>
       )}
 

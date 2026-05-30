@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
+import { useChatbotStore, useStoreHydration, mapBackendBotToFrontend } from "@/store/chatbotStore";
 import { Badge } from "@/components/ui/Badge";
 import { Loader2, MessageSquare, HelpCircle, Coins, MessageCircle, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,11 +17,12 @@ export default function BotOverviewPage() {
   useEffect(() => {
     if (botId && isHydrated) {
       setLoadingStats(true);
-      fetch(`/api/bots?botId=${botId}`)
+      fetch(`/api/chatbot/${botId}`)
         .then((res) => res.json())
         .then((data) => {
-          if (data && !data.error) {
-            updateChatbot(botId, data);
+          if (data && data.data) {
+            const mappedBot = mapBackendBotToFrontend(data.data);
+            updateChatbot(botId, mappedBot);
           }
         })
         .catch((err) => console.error("Error fetching live chatbot statistics:", err))

@@ -30,7 +30,7 @@ const DEFAULT_AVATARS = [
 
 export default function CreateChatbotPage() {
   const router = useRouter();
-  const { addChatbot, updateChatbot } = useChatbotStore();
+  const { createChatbotApi, updateChatbotApi } = useChatbotStore();
   const [step, setStep] = useState(1);
 
   // --- Step States ---
@@ -41,6 +41,7 @@ export default function CreateChatbotPage() {
 
   // Step 2: Knowledge Base
   const [files, setFiles] = useState<KnowledgeFile[]>([]);
+  const [actualFiles, setActualFiles] = useState<File[]>([]);
   const [kbText, setKbText] = useState("");
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [isCrawling, setIsCrawling] = useState(false);
@@ -78,6 +79,7 @@ export default function CreateChatbotPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const uploadedFiles = Array.from(e.target.files);
+    setActualFiles((prev) => [...prev, ...uploadedFiles]);
 
     uploadedFiles.forEach((file) => {
       const newFile: KnowledgeFile = {
@@ -105,6 +107,7 @@ export default function CreateChatbotPage() {
 
   const handleDeleteFile = (fileName: string) => {
     setFiles((prev) => prev.filter((f) => f.name !== fileName));
+    setActualFiles((prev) => prev.filter((f) => f.name !== fileName));
   };
 
   // Mock URL crawler
@@ -144,55 +147,37 @@ export default function CreateChatbotPage() {
   const handleStartTraining = async () => {
     setIsTraining(true);
 
-    // 1. Create bot data structure
-    const newBotData = {
+    // Call real backend API via proxy route
+    const newBotId = await createChatbotApi({
       name,
       description,
-      avatarUrl: avatar,
-      status: "training" as const,
-      trainingProgress: 0,
-      knowledgeBase: {
-        files,
-        text: kbText + "\n" + files.map(f => `Nội dung tài liệu ${f.name}: Tài liệu này chứa thông tin hỗ trợ kỹ thuật và giới thiệu chatbot.`).join("\n"),
-        websiteUrl,
-      },
-      widgetConfig: {
-        primaryColor,
-        displayName: name,
-        welcomeMessage,
-        placeholderText,
-      },
-    };
+      avatarUrl: avatar === "custom" ? primaryColor : avatar,
+      workspaceName: name, // Workspace name maps to bot name
+      files: actualFiles,
+    });
 
-    // 2. Save inside Zustand store
-    const newBotId = addChatbot(newBotData);
-
-    // 3. Sync to Backend JSON DB (so widget loaded externally can read it!)
-    try {
-      await fetch("/api/bots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...newBotData, id: newBotId }),
-      });
-    } catch (e) {
-      console.error("Error syncing bot to server db:", e);
+    if (!newBotId) {
+      alert("Tạo chatbot thất bại. Vui lòng thử lại!");
+      setIsTraining(false);
+      return;
     }
 
-    // 4. Animate progress bar
+    // Animate progress bar
     let progress = 0;
     const interval = setInterval(() => {
       progress += 10;
       setTrainingProgress(progress);
-      updateChatbot(newBotId, { trainingProgress: progress });
 
       if (progress >= 100) {
         clearInterval(interval);
-        updateChatbot(newBotId, { status: "active", trainingProgress: 100 });
-        // Sync training completion status back to server JSON DB
-        fetch("/api/bots", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...newBotData, id: newBotId, status: "active", trainingProgress: 100 }),
+        // Sync widget configurations by updating
+        updateChatbotApi(newBotId, {
+          widgetConfig: {
+            primaryColor,
+            displayName: name,
+            welcomeMessage,
+            placeholderText,
+          }
         }).then(() => {
           router.push(`/dashboard/bot/${newBotId}/success`);
         });

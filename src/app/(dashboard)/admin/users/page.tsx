@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,16 +7,6 @@ import { z } from "zod";
 import { useAuthStore } from "@/store/authStore";
 import { Search, UserPlus, Shield, ShieldOff, Trash2, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Demo user data — replace with DB call
-const USERS = [
-  { id: "1", name: "Admin BitTech",  email: "admin@bittech.io",  role: 0, status: "active",  joined: "2024-01-15" },
-  { id: "2", name: "Normal User",    email: "user@bittech.io",   role: 2, status: "active",  joined: "2024-03-22" },
-  { id: "3", name: "Nguyễn Thị Hoa",email: "hoa@email.com",     role: 2, status: "active",  joined: "2025-05-01" },
-  { id: "4", name: "Trần Minh Khoa", email: "khoa@email.com",    role: 2, status: "banned",  joined: "2025-04-10" },
-  { id: "5", name: "Lê Thị Lan",     email: "lan@email.com",     role: 0, status: "active",  joined: "2024-11-08" },
-  { id: "6", name: "Phạm Văn Đức",   email: "duc@email.com",     role: 2, status: "inactive",joined: "2025-03-30" },
-];
 
 const createUserSchema = z.object({
   username: z.string().min(1, "Vui lòng nhập tên đăng nhập"),
@@ -35,6 +25,37 @@ export default function UsersPage() {
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch actual registered accounts
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/accounts");
+      const result = await response.json();
+      if (response.ok && result.data) {
+        const mappedUsers = result.data.map((acc: any) => ({
+          id: acc._id || acc.id,
+          name: acc.name || "Tài khoản vô danh",
+          email: acc.email || `${acc.name?.toLowerCase().replace(/\s+/g, "") || "user"}@example.com`,
+          role: acc.role !== undefined ? acc.role : 2, // 2: User
+          status: acc.status || "active",
+          joined: acc.created_at ? new Date(acc.created_at).toLocaleDateString("vi-VN") : "Gần đây"
+        }));
+        setUsersList(mappedUsers);
+      }
+    } catch (err) {
+      console.error("Error fetching accounts:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   // Redirect if not admin
   if (!user || user.role !== 0) {
@@ -57,7 +78,6 @@ export default function UsersPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // x-api-key được tự động đọc từ HttpOnly cookie server-side
         },
         body: JSON.stringify(data),
       });
@@ -68,7 +88,7 @@ export default function UsersPage() {
         setSuccess("Tạo tài khoản thành công!");
         setShowModal(false);
         reset();
-        // TODO: Refresh user list
+        fetchUsers(); // Refresh list after successful creation!
       } else {
         setError(result.message || "Tạo tài khoản thất bại");
       }
@@ -106,7 +126,7 @@ export default function UsersPage() {
             Quản lý người dùng
           </h1>
           <p className="text-sm text-text-muted dark:text-textDark-secondary mt-0.5">
-            {USERS.length} tài khoản trong hệ thống
+            {usersList.length} tài khoản trong hệ thống
           </p>
         </div>
         <button
@@ -137,11 +157,10 @@ export default function UsersPage() {
           {["Tất cả", "Active", "Banned"].map((f, i) => (
             <button
               key={f}
-              className={`px-3 py-1.5 text-xs font-medium transition ${
-                i === 0
+              className={`px-3 py-1.5 text-xs font-medium transition ${i === 0
                   ? "bg-brand text-white"
                   : "text-text-muted dark:text-textDark-secondary hover:bg-surface-input dark:hover:bg-dark-input"
-              } ${i > 0 ? "border-l border-surface-border dark:border-dark-border" : ""}`}
+                } ${i > 0 ? "border-l border-surface-border dark:border-dark-border" : ""}`}
             >
               {f}
             </button>
@@ -165,87 +184,101 @@ export default function UsersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-surface-border dark:divide-dark-border">
-            {USERS.map((user) => (
-              <tr
-                key={user.id}
-                className="hover:bg-surface-page dark:hover:bg-dark-page transition-colors"
-              >
-                {/* Avatar + Name */}
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-brand/15 dark:bg-brand/10 flex items-center justify-center text-xs font-bold text-brand shrink-0">
-                      {user.name[0]}
-                    </div>
-                    <span className="font-medium text-text-primary dark:text-textDark-primary text-sm">
-                      {user.name}
-                    </span>
-                  </div>
-                </td>
-
-                {/* Email */}
-                <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary">
-                  {user.email}
-                </td>
-
-                {/* Role */}
-                <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${
-                    user.role === 0
-                      ? "bg-brand-soft text-success-text dark:bg-brand-softDark dark:text-brand"
-                      : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
-                  }`}>
-                    {getRoleLabel(user.role)}
-                  </span>
-                </td>
-
-                {/* Status */}
-                <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${
-                    user.status === "active"
-                      ? "bg-success-bg text-success-text"
-                      : user.status === "banned"
-                      ? "bg-danger-bg text-danger-text"
-                      : "bg-warning-bg text-warning-text"
-                  }`}>
-                    {user.status}
-                  </span>
-                </td>
-
-                {/* Joined */}
-                <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary font-mono">
-                  {user.joined}
-                </td>
-
-                {/* Actions */}
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <button
-                      className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-brand-soft dark:hover:bg-brand-softDark hover:text-success-text transition"
-                      title={user.role === 0 ? "Hạ quyền" : "Nâng quyền Admin"}
-                    >
-                      {user.role === 0 ? (
-                        <ShieldOff size={14} />
-                      ) : (
-                        <Shield size={14} />
-                      )}
-                    </button>
-                    <button
-                      className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-danger-bg hover:text-danger-text transition"
-                      title="Xoá tài khoản"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="py-10 text-center">
+                  <div className="flex justify-center items-center gap-2 text-brand">
+                    <Loader2 className="animate-spin" size={20} />
+                    <span className="text-xs font-semibold">Đang tải danh sách...</span>
                   </div>
                 </td>
               </tr>
-            ))}
+            ) : usersList.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-10 text-center text-xs text-text-muted">
+                  Không tìm thấy người dùng nào
+                </td>
+              </tr>
+            ) : (
+              usersList.map((user) => (
+                <tr
+                  key={user.id}
+                  className="hover:bg-surface-page dark:hover:bg-dark-page transition-colors"
+                >
+                  {/* Avatar + Name */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-brand/15 dark:bg-brand/10 flex items-center justify-center text-xs font-bold text-brand shrink-0">
+                        {user.name[0]}
+                      </div>
+                      <span className="font-medium text-text-primary dark:text-textDark-primary text-sm">
+                        {user.name}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Email */}
+                  <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary">
+                    {user.email}
+                  </td>
+
+                  {/* Role */}
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${user.role === 0
+                        ? "bg-brand-soft text-success-text dark:bg-brand-softDark dark:text-brand"
+                        : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
+                      }`}>
+                      {getRoleLabel(user.role)}
+                    </span>
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${user.status === "active"
+                        ? "bg-success-bg text-success-text"
+                        : user.status === "banned"
+                          ? "bg-danger-bg text-danger-text"
+                          : "bg-warning-bg text-warning-text"
+                      }`}>
+                      {user.status}
+                    </span>
+                  </td>
+
+                  {/* Joined */}
+                  <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary font-mono">
+                    {user.joined}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-brand-soft dark:hover:bg-brand-softDark hover:text-success-text transition"
+                        title={user.role === 0 ? "Hạ quyền" : "Nâng quyền Admin"}
+                      >
+                        {user.role === 0 ? (
+                          <ShieldOff size={14} />
+                        ) : (
+                          <Shield size={14} />
+                        )}
+                      </button>
+                      <button
+                        className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-danger-bg hover:text-danger-text transition"
+                        title="Xoá tài khoản"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )))}
           </tbody>
         </table>
 
         {/* Table footer */}
         <div className="px-4 py-3 border-t border-surface-border dark:border-dark-border flex items-center justify-between">
           <p className="text-xs text-text-muted dark:text-textDark-secondary">
-            Hiển thị {USERS.length} / {USERS.length} người dùng
+            Hiển thị {usersList.length} / {usersList.length} người dùng
           </p>
           <div className="flex gap-1">
             {["←", "1", "2", "→"].map((p) => (
