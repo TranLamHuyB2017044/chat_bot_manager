@@ -10,7 +10,8 @@ import {
   Code,
   Bot,
   Home,
-  Users
+  Users,
+  History
 } from "lucide-react";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 
@@ -41,6 +42,7 @@ export default function Sidebar({ role }: { role: number }) {
   // Bot-specific navigation list
   const BOT_NAV = botId ? [
     { href: `/dashboard/bot/${botId}`, label: "Tổng quan", icon: LayoutDashboard },
+    { href: `/dashboard/bot/${botId}/sessions`, label: "Phiên trò chuyện", icon: History },
     { href: `/dashboard/bot/${botId}/playground`, label: "Playground", icon: MessageSquare },
     { href: `/dashboard/bot/${botId}/knowledge`, label: "Kiến thức", icon: BookOpen },
     { href: `/dashboard/bot/${botId}/widget-design`, label: "Giao diện", icon: Palette },

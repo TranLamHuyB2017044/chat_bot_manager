@@ -9,6 +9,7 @@ import BotKnowledgePage from "@/pages/dashboard/bot/BotKnowledgePage";
 import BotWidgetDesignPage from "@/pages/dashboard/bot/BotWidgetDesignPage";
 import BotEmbedPage from "@/pages/dashboard/bot/BotEmbedPage";
 import BotSuccessPage from "@/pages/dashboard/bot/BotSuccessPage";
+import BotSessionsPage from "@/pages/dashboard/bot/BotSessionsPage";
 import AdminPage from "@/pages/admin/AdminPage";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -92,11 +93,15 @@ const router = createBrowserRouter([
         element: <BotEmbedPage />,
       },
       {
-        path: "dashboard/bot/:id/success",
-        element: <BotSuccessPage />,
-      },
-      {
-        path: "admin",
+                path: "dashboard/bot/:id/success",
+                element: <BotSuccessPage />,
+              },
+              {
+                path: "dashboard/bot/:id/sessions",
+                element: <BotSessionsPage />,
+              },
+              {
+                path: "admin",
         element: (
           <ProtectedRoute allowedRoles={[0]}>
             <AdminPage />

@@ -50,7 +50,9 @@ export interface Chatbot {
     websiteUrl: string;
   };
   widgetConfig: WidgetConfig;
-  workspaceId: string;
+  telegramBotToken: string;
+  telegramChatId: string;
+  workspaceId?: string;
   publicToken: string;
   embedCode: string;
   accountId: string;
@@ -168,6 +170,8 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
       welcomeMessage: bot.greeting || "Xin chào! Tôi có thể giúp gì cho bạn?",
       placeholderText: "Nhập tin nhắn..."
     },
+    telegramBotToken: bot.telegram_bot_token || "",
+    telegramChatId: bot.telegram_chat_id || "",
     workspaceId: bot.workspace_id || bot.workspaceId,
     publicToken: bot.public_token || bot.publicToken,
     embedCode: bot.embed_code || "",
@@ -353,6 +357,8 @@ export const useChatbotStore = create<ChatbotState>()(
           if (data.widgetConfig) backendUpdates.widgetConfig = data.widgetConfig;
           if (data.knowledgeBase) backendUpdates.knowledgeBase = data.knowledgeBase;
           if (data.status) backendUpdates.is_active = (data.status === "active");
+          if (data.telegramBotToken !== undefined) backendUpdates.telegram_bot_token = data.telegramBotToken;
+          if (data.telegramChatId !== undefined) backendUpdates.telegram_chat_id = data.telegramChatId;
 
           const res = await apiFetch(`/api/chatbot/${id}`, {
             method: "PUT",

@@ -3,20 +3,33 @@ import { useParams } from "react-router-dom";
 import { toast } from "@/components/ui/Sonner";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
-import { Copy, Check, Code, Sparkles, BookOpen, Laptop, Globe, Server, CheckCircle2 } from "lucide-react";
+import { Copy, Check, Code, Sparkles, BookOpen, Laptop, Globe, Server, CheckCircle2, MessageSquare, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBackendUrl } from "@/lib/api";
 
-type Platform = "html" | "wordpress" | "nextjs"  | "php";
+type TabType = "html" | "wordpress" | "nextjs" | "php" | "telegram";
 
 export default function BotEmbedPage() {
   const { id: botId } = useParams<{ id: string }>();
-  const { chatbots } = useChatbotStore();
+  const { chatbots, updateChatbotApi } = useChatbotStore();
   const isHydrated = useStoreHydration();
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<Platform>("html");
+  const [activeTab, setActiveTab] = useState<TabType>("html");
+  const [telegramEnabled, setTelegramEnabled] = useState(false);
+  const [telegramBotToken, setTelegramBotToken] = useState("");
+  const [telegramChatId, setTelegramChatId] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const bot = chatbots.find((b) => b.id === botId);
+
+  // Sync state with bot's telegramConfig
+  useEffect(() => {
+    if (bot && bot.telegramConfig) {
+      setTelegramEnabled(bot.telegramConfig.enabled);
+      setTelegramBotToken(bot.telegramConfig.botToken);
+      setTelegramChatId(bot.telegramConfig.chatId);
+    }
+  }, [bot]);
 
   // Mount the real widget script dynamically on the client!
   useEffect(() => {
@@ -100,7 +113,27 @@ export default function ChatWidget() {
     }
   };
 
-  const platformGuides: Record<Platform, { title: string; steps: string[] }> = {
+  const handleSaveTelegramConfig = async () => {
+    if (!botId) return;
+    setIsSaving(true);
+    try {
+      await updateChatbotApi(botId, {
+        telegramConfig: {
+          enabled: telegramEnabled,
+          botToken: telegramBotToken,
+          chatId: telegramChatId
+        }
+      });
+      toast.success("Đã lưu cấu hình Telegram thành công!");
+    } catch (err) {
+      console.error("Failed to save Telegram config:", err);
+      toast.error("Không thể lưu cấu hình. Vui lòng thử lại!");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const platformGuides: Record<TabType, { title: string; steps: string[] }> = {
     html: {
       title: "Nhúng vào Website HTML tĩnh",
       steps: [
@@ -128,7 +161,6 @@ export default function ChatWidget() {
         "Khởi động lại dev server Next.js."
       ],
     },
-
     php: {
       title: "Nhúng vào mã nguồn PHP / CMS khác",
       steps: [
@@ -137,6 +169,15 @@ export default function ChatWidget() {
         "Đẩy code lên host và kiểm tra hoạt động."
       ],
     },
+    telegram: {
+      title: "Cấu hình thông báo Telegram",
+      steps: [
+        "Tạo bot Telegram mới bằng cách nhắn tin với @BotFather, nhận được Bot Token.",
+        "Tìm ID của nhóm/chat Telegram của bạn bằng cách sử dụng @userinfobot hoặc @getidsbot.",
+        "Nhập Bot Token và Chat ID vào các trường bên dưới.",
+        "Bật tính năng và nhấn Lưu cấu hình."
+      ],
+    }
   };
 
   return (
@@ -203,12 +244,13 @@ export default function ChatWidget() {
               { id: "wordpress", label: "WordPress", icon: Laptop },
               { id: "nextjs", label: "Next.js", icon: Code },
               { id: "php", label: "PHP", icon: Server },
+              { id: "telegram", label: "Telegram", icon: MessageSquare },
             ].map((p) => {
               const Icon = p.icon;
               return (
                 <button
                   key={p.id}
-                  onClick={() => setActiveTab(p.id as Platform)}
+                  onClick={() => setActiveTab(p.id as TabType)}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-btn transition-colors",
                     activeTab === p.id
@@ -225,16 +267,75 @@ export default function ChatWidget() {
 
           {/* Tab content */}
           <div className="space-y-4 pt-1 animate-fadeIn">
-            <h3 className="text-xs font-bold text-text-primary dark:text-textDark-primary">
-              {platformGuides[activeTab].title}
-            </h3>
-            <ol className="list-decimal pl-4 space-y-2 text-xs text-text-secondary dark:text-textDark-primary">
-              {platformGuides[activeTab].steps.map((stepText, idx) => (
-                <li key={idx} className="pl-1.5 leading-relaxed">
-                  {stepText}
-                </li>
-              ))}
-            </ol>
+            {activeTab === "telegram" ? (
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-text-primary dark:text-textDark-primary">
+                {platformGuides[activeTab].title}
+              </h3>
+                <ol className="list-decimal pl-4 space-y-2 text-xs text-text-secondary dark:text-textDark-primary">
+                  {platformGuides[activeTab].steps.map((stepText, idx) => (
+                    <li key={idx} className="pl-1.5 leading-relaxed">
+                      {stepText}
+                    </li>
+                  ))}
+                </ol>
+                <div className="space-y-3 pt-2">
+                  <label className="flex items-center gap-2 text-xs text-text-secondary dark:text-textDark-secondary">
+                    <input
+                      type="checkbox"
+                      checked={telegramEnabled}
+                      onChange={(e) => setTelegramEnabled(e.target.checked)}
+                      className="rounded border-surface-border dark:border-dark-border"
+                    />
+                    <span>Bật thông báo Telegram</span>
+                  </label>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-text-primary dark:text-textDark-primary">Bot Token</label>
+                    <input
+                      type="text"
+                      placeholder="Nhập Bot Token (vd: 123456789:ABCdefGhIJKlmNoPQRStuVWxyZ"
+                      value={telegramBotToken}
+                      onChange={(e) => setTelegramBotToken(e.target.value)}
+                      className="w-full bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border rounded-btn px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-text-primary dark:text-textDark-primary">Chat ID</label>
+                    <input
+                      type="text"
+                      placeholder="Nhập Chat ID (vd: -1001234567890)"
+                      value={telegramChatId}
+                      onChange={(e) => setTelegramChatId(e.target.value)}
+                      className="w-full bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border rounded-btn px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleSaveTelegramConfig}
+                    disabled={isSaving}
+                    className="mt-2"
+                  >
+                    {isSaving ? "Đang lưu..." : (
+                      <>
+                        <Save size={14} className="mr-1" /> Lưu cấu hình
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-xs font-bold text-text-primary dark:text-textDark-primary">
+                {platformGuides[activeTab].title}
+              </h3>
+                <ol className="list-decimal pl-4 space-y-2 text-xs text-text-secondary dark:text-textDark-primary">
+                  {platformGuides[activeTab].steps.map((stepText, idx) => (
+                    <li key={idx} className="pl-1.5 leading-relaxed">
+                      {stepText}
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
           </div>
         </div>
       </div>
