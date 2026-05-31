@@ -97,33 +97,7 @@ export default function BotOverviewPage() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-fadeIn">
-      {/* Top Banner Card */}
-      <div className="bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card p-5 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="space-y-1.5">
-            <h2 className="text-sm font-bold text-text-primary dark:text-textDark-primary leading-tight">
-              Theo dõi tương tác người dùng, fallback và mức sử dụng credits theo từng giai đoạn
-            </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-pill font-medium bg-success-bg text-success-text border border-success/10 capitalize">
-                <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
-                Hoạt động
-              </span>
-              <span className="text-[10px] text-text-muted dark:text-textDark-secondary bg-surface-input dark:bg-dark-input px-2 py-0.5 rounded border border-surface-border/50 dark:border-dark-border/50 font-medium">
-                {fileCount} file / {pageCount} trang đã học
-              </span>
-              <span className="text-[10px] text-text-muted dark:text-textDark-secondary font-mono">
-                {new Date().toLocaleTimeString("vi-VN")} {bot.createdAt}
-              </span>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2 bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border px-3.5 py-1.5 rounded-btn text-xs font-semibold text-text-secondary dark:text-textDark-primary cursor-pointer hover:border-brand/40 transition-colors">
-            <Calendar size={13} className="text-text-muted dark:text-textDark-secondary" />
-            <span>{getFormattedDateRange()}</span>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Quota Section */}
       {loadingAnalytics ? (

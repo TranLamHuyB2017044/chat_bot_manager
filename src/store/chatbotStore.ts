@@ -19,7 +19,10 @@ export interface KnowledgeFile {
   type: string;
   _id?: string;
   filename?: string;
-  status?: string;
+  status?: "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+  total_chunks?: number;
+  error_message?: string;
+  updated_at?: string;
 }
 
 export interface WidgetConfig {
@@ -52,6 +55,11 @@ export interface Chatbot {
   widgetConfig: WidgetConfig;
   telegramBotToken: string;
   telegramChatId: string;
+  telegramConfig?: {
+    enabled: boolean;
+    botToken: string;
+    chatId: string;
+  };
   workspaceId?: string;
   publicToken: string;
   embedCode: string;
@@ -121,11 +129,15 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
   } else if (bot.documents) {
     mappedFiles = bot.documents.map((d: any) => ({
       name: d.filename || d.name,
+      filename: d.filename,
       size: d.size || 0,
-      progress: d.status === "ready" ? 100 : 50,
+      progress: d.status === "READY" || d.status === "ready" ? 100 : d.status === "FAILED" ? 0 : 50,
       type: (d.filename || d.name || "").split(".").pop() || "txt",
       _id: d._id || d.document_id,
-      status: d.status
+      status: (d.status?.toUpperCase() || "UPLOADED") as "UPLOADED" | "PROCESSING" | "READY" | "FAILED",
+      total_chunks: d.total_chunks,
+      error_message: d.error_message,
+      updated_at: d.updated_at
     }));
   }
 

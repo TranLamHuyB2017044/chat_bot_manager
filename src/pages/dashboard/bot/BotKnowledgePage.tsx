@@ -1,73 +1,207 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { toast } from "@/components/ui/Sonner";
-import { useChatbotStore, KnowledgeFile, useStoreHydration, mapBackendBotToFrontend } from "@/store/chatbotStore";
+import { useChatbotStore, KnowledgeFile, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { Tooltip } from "@/components/ui/Tooltip";
 import {
   FileText,
-  Globe,
   Upload,
   Trash2,
   Loader2,
   Sparkles,
   Database,
-  BookOpen
+  BookOpen,
+  RefreshCw,
+  FileUp,
+  AlertCircle
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, getBackendUrl } from "@/lib/api";
 
 export default function BotKnowledgePage() {
   const { id: botId } = useParams<{ id: string }>();
   const { chatbots, updateChatbot } = useChatbotStore();
   
   const isHydrated = useStoreHydration();
-  const [activeTab, setActiveTab] = useState<"files" | "text" | "url">("files");
-
-  // Input states
-  const [inputText, setInputText] = useState("");
-  const [inputUrl, setInputUrl] = useState("");
-  const [isCrawling, setIsCrawling] = useState(false);
-  const [crawlerLogs, setCrawlerLogs] = useState<string[]>([]);
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const sseConnections = useRef<Record<string, EventSource>>({});
 
   const bot = chatbots.find((b) => b.id === botId);
-
-  // Sync state values on load
-  useEffect(() => {
-    if (bot) {
-      setInputText(bot.knowledgeBase.text || "");
-    }
-  }, [bot]);
 
   // Fetch actual RAG documents on mount/hydration
   useEffect(() => {
     if (bot && isHydrated) {
-      const workspaceId = bot.workspaceId || bot.id;
-      apiFetch(`/api/rag/workspaces/${workspaceId}/documents`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.data) {
-            const mappedDocs = data.data.map((d: any) => ({
-              name: d.filename || d.name,
-              size: d.size || 0,
-              progress: d.status === "ready" ? 100 : 50,
-              type: (d.filename || d.name || "").split(".").pop() || "txt",
-              _id: d._id,
-              status: d.status
-            }));
-            updateChatbot(botId!, {
-              knowledgeBase: {
-                ...bot.knowledgeBase,
-                files: mappedDocs,
-              }
-            });
-          }
-        })
-        .catch((err) => console.error("Error fetching documents:", err));
+      fetchDocuments();
     }
   }, [botId, isHydrated]);
+
+  // Cleanup all SSE connections on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(sseConnections.current).forEach((es) => es.close());
+    };
+  }, []);
+
+  const fetchDocuments = async () => {
+    if (!bot) return;
+    const workspaceId = bot.workspaceId || bot.id;
+    try {
+      const res = await apiFetch(`/api/rag/workspaces/${workspaceId}/documents`);
+      const data = await res.json();
+      if (data && data.data) {
+        const mappedDocs: KnowledgeFile[] = data.data.map((d: any) => ({
+          name: d.filename || d.name,
+          filename: d.filename,
+          size: d.size || 0,
+          progress: d.status === "READY" || d.status === "ready" ? 100 : d.status === "FAILED" ? 0 : 50,
+          type: (d.filename || d.name || "").split(".").pop() || "txt",
+          _id: d._id || d.document_id,
+          status: (d.status?.toUpperCase() || "UPLOADED") as "UPLOADED" | "PROCESSING" | "READY" | "FAILED",
+          total_chunks: d.total_chunks,
+          error_message: d.error_message,
+          updated_at: d.updated_at
+        }));
+        updateChatbot(botId!, {
+          knowledgeBase: {
+            ...bot.knowledgeBase,
+            files: mappedDocs,
+          }
+        });
+        // Start SSE for non-final states
+        mappedDocs.forEach((doc: KnowledgeFile) => {
+          if (doc._id && (doc.status === "UPLOADED" || doc.status === "PROCESSING")) {
+            startSSE(doc._id);
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching documents:", err);
+    }
+  };
+
+  const startSSE = (documentId: string) => {
+    // Close existing connection if any
+    if (sseConnections.current[documentId]) {
+      sseConnections.current[documentId].close();
+    }
+
+    const baseUrl = getBackendUrl();
+    const eventSource = new EventSource(
+      `${baseUrl}/api/rag/documents/${documentId}/status/sse`
+    );
+
+    sseConnections.current[documentId] = eventSource;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const docData = JSON.parse(event.data);
+        // Get current bot from store
+        const currentBot = chatbots.find(b => b.id === botId);
+        if (!currentBot) return;
+        
+        // Create updated files array
+        const updatedFiles: KnowledgeFile[] = currentBot.knowledgeBase.files.map((file: KnowledgeFile) => {
+          if (file._id === documentId) {
+            const newStatus = (docData.status?.toUpperCase() || file.status) as "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+            return {
+              ...file,
+              status: newStatus,
+              total_chunks: docData.total_chunks,
+              error_message: docData.error_message,
+              updated_at: docData.updated_at,
+              progress: newStatus === "READY" ? 100 : newStatus === "FAILED" ? 0 : 50
+            };
+          }
+          return file;
+        });
+        
+        // Update the store
+        updateChatbot(botId!, {
+          knowledgeBase: {
+            ...currentBot.knowledgeBase,
+            files: updatedFiles
+          }
+        });
+        
+        // Close connection if status is final
+        const finalFile = updatedFiles.find(f => f._id === documentId);
+        if (finalFile && (finalFile.status === "READY" || finalFile.status === "FAILED")) {
+          eventSource.close();
+          delete sseConnections.current[documentId];
+          
+          if (finalFile.status === "READY") {
+            toast.success(`Tài liệu ${finalFile.name} đã sẵn sàng!`);
+          } else if (finalFile.status === "FAILED" && finalFile.error_message) {
+            toast.error(`Xử lý tài liệu thất bại: ${finalFile.error_message}`);
+          }
+        }
+      } catch (err) {
+        console.error("Error parsing SSE message:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("SSE connection error:", err);
+      eventSource.close();
+      delete sseConnections.current[documentId];
+      
+      // Fallback to fetching document status once
+      fetchDocumentStatus(documentId);
+    };
+  };
+
+  const fetchDocumentStatus = async (documentId: string) => {
+    if (!bot) return;
+    try {
+      const res = await apiFetch(`/api/rag/documents/${documentId}/status`);
+      const data = await res.json();
+      if (data && data.data) {
+        const docData = data.data;
+        const currentBot = chatbots.find(b => b.id === botId);
+        if (!currentBot) return;
+        
+        const updatedFiles: KnowledgeFile[] = currentBot.knowledgeBase.files.map((file: KnowledgeFile) => {
+          if (file._id === documentId) {
+            const newStatus = (docData.status?.toUpperCase() || file.status) as "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+            return {
+              ...file,
+              status: newStatus,
+              total_chunks: docData.total_chunks,
+              error_message: docData.error_message,
+              updated_at: docData.updated_at,
+              progress: newStatus === "READY" ? 100 : newStatus === "FAILED" ? 0 : 50
+            };
+          }
+          return file;
+        });
+        
+        updateChatbot(botId!, {
+          knowledgeBase: {
+            ...currentBot.knowledgeBase,
+            files: updatedFiles
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching document status:", err);
+    }
+  };
+
+  const getStatusBadgeProps = (status?: string) => {
+    switch (status) {
+      case "UPLOADED":
+        return { variant: "info" as const, text: "Đã tải lên", icon: <Upload size={10} /> };
+      case "PROCESSING":
+        return { variant: "warning" as const, text: "Đang xử lý", icon: <Loader2 size={10} className="animate-spin" /> };
+      case "READY":
+        return { variant: "success" as const, text: "Sẵn sàng", icon: <Sparkles size={10} /> };
+      case "FAILED":
+        return { variant: "danger" as const, text: "Thất bại", icon: <AlertCircle size={10} /> };
+      default:
+        return { variant: "default" as const, text: "Đang xử lý", icon: <Loader2 size={10} className="animate-spin" /> };
+    }
+  };
 
   if (!bot) {
     if (!isHydrated || chatbots.length === 0) {
@@ -81,40 +215,11 @@ export default function BotKnowledgePage() {
 
   if (!bot) return null;
 
-  const handleTextSave = async () => {
-    setIsUpdating(true);
-    try {
-      const res = await apiFetch(`/api/chatbot/${botId}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          knowledgeBase: {
-            ...bot.knowledgeBase,
-            text: inputText,
-          }
-        }),
-      });
-      if (res.ok) {
-        const resData = await res.json();
-        if (resData.data) {
-          const mappedBot = mapBackendBotToFrontend(resData.data);
-          updateChatbot(botId!, mappedBot);
-          toast.success("Lưu và đồng bộ văn bản tri thức thành công!");
-        }
-      } else {
-        toast.error("Lưu tri thức dạng văn bản thất bại!");
-      }
-    } catch (err) {
-      console.error("Error saving text knowledge:", err);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !bot) return;
     const uploaded = Array.from(e.target.files);
     
-    setIsUpdating(true);
+    setIsUpdating("upload");
     try {
       const workspaceId = bot.workspaceId || bot.id;
       const formData = new FormData();
@@ -128,129 +233,105 @@ export default function BotKnowledgePage() {
       });
 
       if (res.ok) {
-        // Retrain status mockup for visual confirmation
-        updateChatbot(botId!, { status: "training", trainingProgress: 30 });
-        
-        // Refresh documents list
-        const docRes = await apiFetch(`/api/rag/workspaces/${workspaceId}/documents`);
-        const docData = await docRes.json();
-        if (docRes.ok && docData.data) {
-          const mappedDocs = docData.data.map((d: any) => ({
-            name: d.filename || d.name,
-            size: d.size || 0,
-            progress: d.status === "ready" ? 100 : 50,
-            type: (d.filename || d.name || "").split(".").pop() || "txt",
-            _id: d._id,
-            status: d.status
-          }));
-          updateChatbot(botId!, {
-            status: "active",
-            trainingProgress: 100,
-            knowledgeBase: {
-              ...bot.knowledgeBase,
-              files: mappedDocs,
-            }
-          });
-          toast.success("Đã tải tài liệu lên và đồng bộ cơ sở tri thức!");
-        }
+        toast.success("Đã tải file lên! Đang xử lý...");
+        await fetchDocuments();
       } else {
-        toast.error("Không thể tải tài liệu lên. Vui lòng thử lại!");
+        toast.error("Không thể tải file lên. Vui lòng thử lại!");
       }
     } catch (err) {
       console.error("Error uploading RAG documents:", err);
+      toast.error("Có lỗi xảy ra khi tải file lên!");
     } finally {
-      setIsUpdating(false);
+      setIsUpdating(null);
+      // Reset input
+      e.target.value = "";
     }
   };
 
-  const handleDeleteResource = async (name: string) => {
-    if (!bot) return;
-    const filteredFiles = bot.knowledgeBase.files.filter((f) => f.name !== name);
-    setIsUpdating(true);
+  const handleReplaceFile = async (documentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !bot) return;
+    const file = e.target.files[0];
+    
+    setIsUpdating(documentId);
     try {
-      const res = await apiFetch(`/api/chatbot/${botId}`, {
+      const workspaceId = bot.workspaceId || bot.id;
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await apiFetch(`/api/rag/workspaces/${workspaceId}/documents/${documentId}/replace`, {
         method: "PUT",
-        body: JSON.stringify({
-          knowledgeBase: {
-            ...bot.knowledgeBase,
-            files: filteredFiles,
-          }
-        }),
+        body: formData,
       });
+
       if (res.ok) {
-        const resData = await res.json();
-        if (resData.data) {
-          const mappedBot = mapBackendBotToFrontend(resData.data);
-          updateChatbot(botId!, mappedBot);
-          toast.success("Đã xóa tài liệu khỏi cơ sở tri thức!");
-        }
+        toast.success("Đã thay thế file! Đang xử lý lại...");
+        await fetchDocuments(); // Refresh and start SSE
+      } else {
+        toast.error("Không thể thay thế file. Vui lòng thử lại!");
       }
     } catch (err) {
-      console.error("Error deleting knowledge resource:", err);
+      console.error("Error replacing file:", err);
+      toast.error("Có lỗi xảy ra khi thay thế file!");
     } finally {
-      setIsUpdating(false);
+      setIsUpdating(null);
     }
   };
 
-  const handleUrlCrawl = () => {
-    if (!inputUrl.trim() || !bot) return;
-    setIsCrawling(true);
-    setCrawlerLogs([]);
+  const handleReindexDocument = async (documentId: string) => {
+    if (!bot) return;
+    setIsUpdating(documentId);
+    try {
+      const res = await apiFetch(`/api/rag/documents/${documentId}/reindex`, {
+        method: "POST",
+      });
 
-    const logs = [
-      `Connecting to ${inputUrl}...`,
-      `Reading sitemaps...`,
-      `Crawl completed successfully! Extracted 4,120 characters from main page.`,
-    ];
-
-    let logIdx = 0;
-    const interval = setInterval(async () => {
-      if (logIdx < logs.length) {
-        setCrawlerLogs((prev) => [...prev, logs[logIdx]]);
-        logIdx++;
+      if (res.ok) {
+        toast.success("Đang reindex tài liệu...");
+        await fetchDocuments(); // Refresh and start SSE
       } else {
-        clearInterval(interval);
-        setIsCrawling(false);
-        
-        const urlDomain = inputUrl.replace(/https?:\/\/(www\.)?/, "");
-        const newFile: KnowledgeFile = {
-          name: `Website: ${urlDomain}`,
-          size: 4120,
-          progress: 100,
-          type: "url",
-        };
-
-        const mergedFiles = [...bot.knowledgeBase.files, newFile];
-        const textAppend = `\nThông tin thu thập từ trang ${inputUrl}: Nền tảng chatbot thông minh hỗ trợ CSS Shadow DOM.`;
-        
-        setIsUpdating(true);
-        try {
-          const res = await apiFetch(`/api/chatbot/${botId}`, {
-            method: "PUT",
-            body: JSON.stringify({
-              knowledgeBase: {
-                ...bot.knowledgeBase,
-                files: mergedFiles,
-                text: bot.knowledgeBase.text + textAppend,
-              }
-            }),
-          });
-          if (res.ok) {
-            const resData = await res.json();
-            if (resData.data) {
-              const mappedBot = mapBackendBotToFrontend(resData.data);
-              updateChatbot(botId!, mappedBot);
-              toast.success("Đã crawl và đồng bộ URL tri thức!");
-            }
-          }
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setIsUpdating(false);
-          setInputUrl("");
-        }
+        toast.error("Không thể reindex tài liệu. Vui lòng thử lại!");
       }
-    }, 600);
+    } catch (err) {
+      console.error("Error reindexing document:", err);
+      toast.error("Có lỗi xảy ra khi reindex!");
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!bot) return;
+    setIsUpdating(documentId);
+    try {
+      const workspaceId = bot.workspaceId || bot.id;
+      const res = await apiFetch(`/api/rag/workspaces/${workspaceId}/documents/${documentId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        // Close SSE connection if exists
+        if (sseConnections.current[documentId]) {
+          sseConnections.current[documentId].close();
+          delete sseConnections.current[documentId];
+        }
+        // Remove from store
+        const filteredFiles: KnowledgeFile[] = bot.knowledgeBase.files.filter((f: KnowledgeFile) => f._id !== documentId);
+        updateChatbot(botId!, {
+          knowledgeBase: {
+            ...bot.knowledgeBase,
+            files: filteredFiles
+          }
+        });
+        toast.success("Đã xóa tài liệu!");
+      } else {
+        toast.error("Không thể xóa tài liệu. Vui lòng thử lại!");
+      }
+    } catch (err) {
+      console.error("Error deleting document:", err);
+      toast.error("Có lỗi xảy ra khi xóa tài liệu!");
+    } finally {
+      setIsUpdating(null);
+    }
   };
 
   return (
@@ -265,54 +346,130 @@ export default function BotKnowledgePage() {
                 Cơ sở tri thức hiện tại
               </h2>
             </div>
-            {bot.status === "training" ? (
-              <Badge variant="warning" dot className="animate-pulse">
-                Đang học ({bot.trainingProgress}%)
-              </Badge>
-            ) : (
-              <Badge variant="success" dot>
-                Đã đồng bộ
-              </Badge>
-            )}
+            <Tooltip content="Làm mới danh sách tài liệu">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={fetchDocuments}
+                className="text-xs h-7"
+              >
+                <RefreshCw size={12} className="mr-1" />
+                Làm mới
+              </Button>
+            </Tooltip>
           </div>
 
           {/* List scroll container */}
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
             {bot.knowledgeBase.files.length === 0 ? (
               <div className="flex flex-col items-center justify-center text-center py-20 text-text-muted dark:text-textDark-secondary">
                 <BookOpen size={36} className="stroke-[1.2] mb-3 text-brand/30" />
                 <p className="text-xs font-semibold">Chưa có tri thức nào được cung cấp</p>
-                <p className="text-[10px] mt-1">Sử dụng thanh công cụ bên phải để thêm tài liệu hoặc website.</p>
+                <p className="text-[10px] mt-1">Sử dụng thanh công cụ bên phải để thêm tài liệu.</p>
               </div>
             ) : (
-              bot.knowledgeBase.files.map((file) => (
-                <div
-                  key={file.name}
-                  className="group flex items-center justify-between p-3 bg-surface-page dark:bg-dark-page border border-surface-border dark:border-dark-border rounded-btn hover:border-brand/40 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-8 h-8 rounded-lg bg-surface-input dark:bg-dark-input flex items-center justify-center text-text-secondary dark:text-textDark-primary shrink-0 border border-surface-border/50 dark:border-dark-border/50">
-                      {file.type === "url" ? <Globe size={14} className="text-blue-500" /> : <FileText size={14} className="text-brand" />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-text-primary dark:text-textDark-primary truncate">
-                        {file.name}
-                      </p>
-                      <p className="text-[9px] text-text-muted dark:text-textDark-secondary font-mono mt-0.5">
-                        {file.type === "url" ? "CRAWLED WEBSITE" : `${(file.size / 1024).toFixed(1)} KB — DOCUMENT`}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleDeleteResource(file.name)}
-                    className="p-1.5 rounded-btn text-text-muted hover:text-danger hover:bg-danger-bg transition-colors"
-                    title="Xóa tri thức"
+              bot.knowledgeBase.files.map((file) => {
+                const statusProps = getStatusBadgeProps(file.status);
+                return (
+                  <div
+                    key={file._id || file.name}
+                    className="group flex flex-col p-4 bg-surface-page dark:bg-dark-page border border-surface-border dark:border-dark-border rounded-card hover:border-brand/40 transition-colors"
                   >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-lg bg-surface-input dark:bg-dark-input flex items-center justify-center text-text-secondary dark:text-textDark-primary shrink-0 border border-surface-border/50 dark:border-dark-border/50">
+                          <FileText size={16} className="text-brand" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-text-primary dark:text-textDark-primary truncate">
+                            {file.name}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant={statusProps.variant}>
+                              {statusProps.icon}
+                              <span className="ml-1">{statusProps.text}</span>
+                            </Badge>
+                            <span className="text-[10px] text-text-muted dark:text-textDark-secondary font-mono">
+                              {(file.size / 1024).toFixed(1)} KB
+                            </span>
+                            {file.status === "READY" && file.total_chunks !== undefined && (
+                              <span className="text-[10px] text-text-muted dark:text-textDark-secondary">
+                                • {file.total_chunks} chunks
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      {file._id && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Replace file */}
+                          <Tooltip content="Thay thế file">
+                            <label className="p-2 rounded-btn text-text-muted hover:text-brand hover:bg-brand/10 cursor-pointer transition-colors">
+                              {isUpdating === file._id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <FileUp size={14} />
+                              )}
+                              <input
+                                type="file"
+                                className="hidden"
+                                onChange={(e) => handleReplaceFile(file._id!, e)}
+                                disabled={isUpdating === file._id}
+                              />
+                            </label>
+                          </Tooltip>
+                          
+                          {/* Reindex */}
+                          <Tooltip content="Reindex tài liệu">
+                            <button
+                              onClick={() => handleReindexDocument(file._id!)}
+                              disabled={isUpdating === file._id}
+                              className="p-2 rounded-btn text-text-muted hover:text-blue-500 hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+                            >
+                              <RefreshCw size={14} className={isUpdating === file._id ? "animate-spin" : ""} />
+                            </button>
+                          </Tooltip>
+                          
+                          {/* Delete */}
+                          <Tooltip content="Xóa tài liệu">
+                            <button
+                              onClick={() => handleDeleteDocument(file._id!)}
+                              disabled={isUpdating === file._id}
+                              className="p-2 rounded-btn text-text-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-50"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </Tooltip>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Progress bar for processing */}
+                    {(file.status === "UPLOADED" || file.status === "PROCESSING") && (
+                      <div className="mt-3">
+                        <div className="h-1.5 bg-surface-input dark:bg-dark-input rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-brand transition-all duration-500 animate-pulse"
+                            style={{ width: `${file.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Error message */}
+                    {file.status === "FAILED" && file.error_message && (
+                      <div className="mt-3 p-2 bg-danger/10 border border-danger/20 rounded-btn">
+                        <p className="text-[10px] text-danger flex items-center gap-1">
+                          <AlertCircle size={10} />
+                          {file.error_message}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -325,125 +482,33 @@ export default function BotKnowledgePage() {
             Thêm tri thức mới
           </h3>
 
-          {/* Action Tabs */}
-          <div className="grid grid-cols-3 gap-1 bg-surface-input dark:bg-dark-input p-1 rounded-btn text-xs font-semibold text-text-muted">
-            <button
-              onClick={() => setActiveTab("files")}
-              className={cn(
-                "py-1.5 rounded-btn text-center transition-colors",
-                activeTab === "files"
-                  ? "bg-white dark:bg-dark-card text-brand shadow-sm"
-                  : "hover:text-text-primary dark:hover:text-textDark-primary"
-              )}
-            >
-              Files
-            </button>
-            <button
-              onClick={() => setActiveTab("text")}
-              className={cn(
-                "py-1.5 rounded-btn text-center transition-colors",
-                activeTab === "text"
-                  ? "bg-white dark:bg-dark-card text-brand shadow-sm"
-                  : "hover:text-text-primary dark:hover:text-textDark-primary"
-              )}
-            >
-              Text
-            </button>
-            <button
-              onClick={() => setActiveTab("url")}
-              className={cn(
-                "py-1.5 rounded-btn text-center transition-colors",
-                activeTab === "url"
-                  ? "bg-white dark:bg-dark-card text-brand shadow-sm"
-                  : "hover:text-text-primary dark:hover:text-textDark-primary"
-              )}
-            >
-              Website
-            </button>
-          </div>
-
-          {/* Tab 1: Files */}
-          {activeTab === "files" && (
-            <div className="space-y-4 animate-fadeIn">
-              <div className="border-2 border-dashed border-surface-border dark:border-dark-border hover:border-brand/40 rounded-card p-6 flex flex-col items-center justify-center cursor-pointer transition-colors relative">
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.txt,.docx,.csv"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  disabled={isUpdating}
-                />
-                <Upload size={24} className="text-text-muted dark:text-textDark-secondary mb-2 animate-pulse" />
-                <span className="text-xs font-bold text-text-primary dark:text-textDark-primary">
-                  Chọn file để tải lên
-                </span>
-                <span className="text-[9px] text-text-muted dark:text-textDark-secondary mt-1">
-                  PDF, TXT, DOCX, CSV
-                </span>
-              </div>
-              <div className="flex gap-2 p-3 bg-brand-soft dark:bg-brand-softDark border border-brand/10 rounded-btn text-[10px] text-brand leading-relaxed">
-                <Sparkles size={14} className="shrink-0 mt-0.5" />
-                <p>Mô hình AI sẽ tự động học lại ngay khi file tải lên hoàn tất thành công.</p>
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: Text */}
-          {activeTab === "text" && (
-            <div className="space-y-4 animate-fadeIn">
-              <textarea
-                placeholder="Gõ hoặc dán nội dung văn bản mới cần bổ sung..."
-                rows={8}
-                className="w-full px-3 py-2.5 rounded-btn text-xs bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition resize-none font-sans"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+          <div className="space-y-4 animate-fadeIn">
+            <div className="border-2 border-dashed border-surface-border dark:border-dark-border hover:border-brand/40 rounded-card p-6 flex flex-col items-center justify-center cursor-pointer transition-colors relative">
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.txt,.docx,.csv"
+                onChange={handleFileUpload}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                disabled={isUpdating === "upload"}
               />
-              <Button
-                variant="primary"
-                onClick={handleTextSave}
-                loading={isUpdating}
-                disabled={inputText === bot.knowledgeBase.text || isUpdating}
-                className="w-full text-xs font-semibold"
-              >
-                Lưu và Đồng bộ
-              </Button>
-            </div>
-          )}
-
-          {/* Tab 3: URL Crawler */}
-          {activeTab === "url" && (
-            <div className="space-y-4 animate-fadeIn">
-              <div className="flex flex-col gap-1.5">
-                <Input
-                  placeholder="https://example.com/faq"
-                  value={inputUrl}
-                  onChange={(e) => setInputUrl(e.target.value)}
-                  prefix={<Globe size={13} />}
-                  className="text-xs"
-                />
-              </div>
-              <Button
-                variant="primary"
-                onClick={handleUrlCrawl}
-                loading={isCrawling}
-                disabled={!inputUrl.trim() || isCrawling}
-                className="w-full text-xs font-semibold"
-              >
-                Crawl Website
-              </Button>
-
-              {crawlerLogs.length > 0 && (
-                <div className="p-3 bg-neutral-900 rounded-btn font-mono text-[9px] text-zinc-400 space-y-1 border border-zinc-800">
-                  {crawlerLogs.map((log, i) => (
-                    <p key={i} className={cn(i === crawlerLogs.length - 1 && "text-brand font-semibold")}>
-                      {log}
-                    </p>
-                  ))}
-                </div>
+              {isUpdating === "upload" ? (
+                <Loader2 size={24} className="text-brand mb-2 animate-spin" />
+              ) : (
+                <Upload size={24} className="text-text-muted dark:text-textDark-secondary mb-2" />
               )}
+              <span className="text-xs font-bold text-text-primary dark:text-textDark-primary">
+                {isUpdating === "upload" ? "Đang xử lý..." : "Chọn file để tải lên"}
+              </span>
+              <span className="text-[10px] text-text-muted dark:text-textDark-secondary mt-1">
+                PDF, TXT, DOCX, CSV
+              </span>
             </div>
-          )}
+            <div className="flex gap-2 p-3 bg-brand-soft dark:bg-brand-softDark border border-brand/10 rounded-btn text-[10px] text-brand leading-relaxed">
+              <Sparkles size={14} className="shrink-0 mt-0.5" />
+              <p>Mô hình AI sẽ tự động học lại ngay khi file tải lên hoàn tất thành công.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
