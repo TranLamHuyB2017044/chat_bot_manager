@@ -486,10 +486,7 @@ export default function CreateBotPage() {
                         <span>Số file tài liệu:</span>
                         <span className="font-semibold">{files.filter(f => f.type !== "url").length} files</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Website crawl:</span>
-                        <span className="font-semibold">{websiteUrl ? "1 website" : "Không có"}</span>
-                      </div>
+                     
                     </div>
                   </div>
                 </div>

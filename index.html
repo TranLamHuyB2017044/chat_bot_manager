@@ -6,6 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BitTech Admin</title>
     
+    <!-- Content Security Policy (CSP) để ngăn XSS -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' https://api-ocr.bittechx.cloud https://fonts.googleapis.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com;
+      img-src 'self' data: https:;
+      connect-src 'self' https://api-ocr.bittechx.cloud;
+      frame-src 'none';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+    ">
+    
     <!-- Load Google Fonts for custom typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

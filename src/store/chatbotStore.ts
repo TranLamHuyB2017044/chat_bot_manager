@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
 export const DEFAULT_AVATARS = [
-  { id: "/chatbot_logo.jpeg", color: "#2DB87A", label: "Mặc định", isImage: true }, // DEFAULT = 0
-  { id: "bot-blue", color: "#3B82F6", label: "Robot Xanh" }, // BLUE = 1
-  { id: "bot-green", color: "#10B981", label: "Robot Lục" }, // GREEN = 2
-  { id: "bot-purple", color: "#8B5CF6", label: "Robot Tím" }, // PURPLE = 3
-  { id: "bot-pink", color: "#EC4899", label: "Robot Hồng" }, // PINK = 4
+  { id: "/chatbot_logo.jpeg", color: "#4f46e5", label: "Mặc định", isImage: true }, // DEFAULT = 0
+  { id: "bot-blue", color: "#3b82f6", label: "Robot Xanh" }, // BLUE = 1
+  { id: "bot-green", color: "#10b981", label: "Robot Lục" }, // GREEN = 2
+  { id: "bot-purple", color: "#8b5cf6", label: "Robot Tím" }, // PURPLE = 3
+  { id: "bot-pink", color: "#ec4899", label: "Robot Hồng" }, // PINK = 4
 ];
 
 export interface KnowledgeFile {
@@ -34,9 +34,12 @@ export interface Chatbot {
   name: string;
   description: string;
   avatarUrl: string;
+  color: number;
+  greeting: string;
   status: "active" | "training" | "inactive";
   trainingProgress: number;
   createdAt: string;
+  updatedAt: string;
   chatsCount: number;
   messagesCount: number;
   fallbackRate: number;
@@ -47,8 +50,10 @@ export interface Chatbot {
     websiteUrl: string;
   };
   widgetConfig: WidgetConfig;
-  workspaceId?: string;
-  publicToken?: string;
+  workspaceId: string;
+  publicToken: string;
+  embedCode: string;
+  accountId: string;
 }
 
 interface WizardState {
@@ -117,7 +122,7 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
       size: d.size || 0,
       progress: d.status === "ready" ? 100 : 50,
       type: (d.filename || d.name || "").split(".").pop() || "txt",
-      _id: d._id,
+      _id: d._id || d.document_id,
       status: d.status
     }));
   }
@@ -133,7 +138,7 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
   }
 
   // Get primary color from bot color index
-  let primaryColor = "#2DB87A";
+  let primaryColor = DEFAULT_AVATARS[0].color;
   if (bot.color !== undefined && bot.color >= 0 && bot.color < DEFAULT_AVATARS.length) {
     primaryColor = DEFAULT_AVATARS[bot.color].color;
   }
@@ -143,9 +148,12 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
     name: bot.name,
     description: bot.description || "",
     avatarUrl: avatarUrl,
+    color: bot.color || 0,
+    greeting: bot.greeting || "Xin chào! Tôi có thể giúp gì cho bạn?",
     status: bot.is_active === false || bot.status === "inactive" ? "inactive" : bot.status || "active",
     trainingProgress: bot.trainingProgress !== undefined ? bot.trainingProgress : 100,
     createdAt: bot.created_at ? new Date(bot.created_at).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN"),
+    updatedAt: bot.updated_at ? new Date(bot.updated_at).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN"),
     chatsCount: bot.chatsCount || bot.used_requests || 0,
     messagesCount: bot.messagesCount || 0,
     fallbackRate: bot.fallbackRate || 0,
@@ -161,8 +169,10 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
       welcomeMessage: bot.greeting || "Xin chào! Tôi có thể giúp gì cho bạn?",
       placeholderText: "Nhập tin nhắn..."
     },
-    workspaceId: bot.workspace_id || bot.workspaceId || bot._id || bot.id,
-    publicToken: bot.public_token || bot.publicToken || bot.id
+    workspaceId: bot.workspace_id || bot.workspaceId,
+    publicToken: bot.public_token || bot.publicToken,
+    embedCode: bot.embed_code || "",
+    accountId: bot.account_id || bot.accountId
   };
 }
 
@@ -265,6 +275,7 @@ export const useChatbotStore = create<ChatbotState>()(
           }
           
           if (res.ok && resData.data) {
+            // Response mới: data là array chatbot trực tiếp
             const list = Array.isArray(resData.data) ? resData.data : [];
             const mappedList = list.map(mapBackendBotToFrontend);
             set((s) => {
@@ -304,9 +315,11 @@ export const useChatbotStore = create<ChatbotState>()(
             body: formData,
           });
           const resData = await res.json();
-          if (res.ok && resData.data) {
+          if (res.ok && resData.data?.chatbot) {
             // Backend returns chatbot in resData.data.chatbot
             const botData = resData.data.chatbot;
+            // Thêm embed_code vào botData trước khi map
+            botData.embed_code = resData.data.embed_code;
             const mappedBot = mapBackendBotToFrontend(botData);
             set((s) => {
               s.chatbots.push(mappedBot);
@@ -336,6 +349,8 @@ export const useChatbotStore = create<ChatbotState>()(
           if (data.name) backendUpdates.name = data.name;
           if (data.description !== undefined) backendUpdates.description = data.description;
           if (data.avatarUrl) backendUpdates.avatar_url = data.avatarUrl;
+          if (data.color !== undefined) backendUpdates.color = data.color;
+          if (data.greeting) backendUpdates.greeting = data.greeting;
           if (data.widgetConfig) backendUpdates.widgetConfig = data.widgetConfig;
           if (data.knowledgeBase) backendUpdates.knowledgeBase = data.knowledgeBase;
           if (data.status) backendUpdates.is_active = (data.status === "active");

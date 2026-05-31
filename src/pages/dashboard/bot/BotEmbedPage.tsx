@@ -52,8 +52,8 @@ export default function BotEmbedPage() {
 
   if (!bot) return null;
 
-  const publicToken = (bot as any).publicToken || (bot as any).public_token || bot.id;
-  const embedCodeSingle = (bot as any).embedCode || 
+  const publicToken = bot.publicToken || bot.id;
+  const embedCodeSingle = bot.embedCode || 
     `<script src="https://api-ocr.bittechx.cloud/chatbot-embed.js" data-chatbot-id="${bot.id}" data-public-token="${publicToken}"></script>`;
 
   const activeEmbedCode = activeTab === "nextjs" ? `import Script from 'next/script';

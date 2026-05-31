@@ -17,8 +17,9 @@ export default function BotOverviewPage() {
         .then((res) => res.json())
         .then((data) => {
           if (data && data.data) {
+            // Response mới: data.data là chatbot object trực tiếp
             const mappedBot = mapBackendBotToFrontend(data.data);
-            const { chatbots: existingChatbots, addChatbot, updateChatbot } = useChatbotStore.getState();
+            const { chatbots: existingChatbots, updateChatbot } = useChatbotStore.getState();
             
             // Kiểm tra xem bot đã có trong store chưa
             const botExists = existingChatbots.find((b) => b.id === botId);
@@ -26,8 +27,6 @@ export default function BotOverviewPage() {
               updateChatbot(botId, mappedBot);
             } else {
               // Nếu chưa có, thêm bot mới vào store
-              // Tạm thời dùng addChatbot với dữ liệu đầy đủ (mặc dù hàm được thiết kế khác)
-              // Hoặc cập nhật state trực tiếp
               useChatbotStore.setState((state) => {
                 state.chatbots.push(mappedBot);
               });
