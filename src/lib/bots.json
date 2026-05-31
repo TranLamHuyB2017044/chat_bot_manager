@@ -2,7 +2,7 @@
   {
     "name": "JOMO Bot",
     "description": "chat bot hỗ trợ bán hàng",
-    "avatarUrl": "/chatbot_logo.jpeg",
+    "avatarUrl": "https://api-ocr.bittechx.cloud/chatbot_logo.jpeg",
     "status": "active",
     "trainingProgress": 100,
     "knowledgeBase": {

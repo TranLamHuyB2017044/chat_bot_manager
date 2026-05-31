@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
 export const DEFAULT_AVATARS = [
-  { id: "/chatbot_logo.jpeg", color: "#4f46e5", label: "Mặc định", isImage: true }, // DEFAULT = 0
-  { id: "bot-blue", color: "#3b82f6", label: "Robot Xanh" }, // BLUE = 1
-  { id: "bot-green", color: "#10b981", label: "Robot Lục" }, // GREEN = 2
-  { id: "bot-purple", color: "#8b5cf6", label: "Robot Tím" }, // PURPLE = 3
-  { id: "bot-pink", color: "#ec4899", label: "Robot Hồng" }, // PINK = 4
+  { color: "#4f46e5", label: "Mặc định" }, // DEFAULT = 0
+  { color: "#3b82f6", label: "Xanh dương" }, // BLUE = 1
+  { color: "#10b981", label: "Xanh lá" }, // GREEN = 2
+  { color: "#8b5cf6", label: "Tím" }, // PURPLE = 3
+  { color: "#ec4899", label: "Hồng" }, // PINK = 4
 ];
 
 export interface KnowledgeFile {
@@ -104,7 +104,7 @@ interface ChatbotState {
 const DEFAULT_WIZARD: WizardState = {
   name: "",
   description: "",
-  avatarUrl: "/chatbot_logo.jpeg",
+  avatarUrl: "https://api-ocr.bittechx.cloud/chatbot_logo.jpeg",
   files: [],
   text: "",
   websiteUrl: "",
@@ -127,11 +127,10 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
     }));
   }
 
-  // Validate avatar URL
-  let avatarUrl = "/chatbot_logo.jpeg";
+  // Dùng avatar mặc định từ backend, trừ khi có avatarUrl riêng từ backend
+  let avatarUrl = "https://api-ocr.bittechx.cloud/chatbot_logo.jpeg";
   const candidateUrl = bot.avatar_url || bot.avatarUrl;
   if (candidateUrl) {
-    // Check if it's a valid URL or starts with /
     if (candidateUrl.startsWith("/") || candidateUrl.startsWith("http://") || candidateUrl.startsWith("https://")) {
       avatarUrl = candidateUrl;
     }

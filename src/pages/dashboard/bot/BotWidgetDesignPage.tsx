@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ArrowRight, Palette, Loader2, Sparkles } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { toast } from "@/components/ui/Sonner";
 
 export default function BotWidgetDesignPage() {
   const { id: botId } = useParams<{ id: string }>();
@@ -51,20 +52,49 @@ export default function BotWidgetDesignPage() {
       welcomeMessage,
     };
 
-    const updatedBot = {
-      ...bot,
-      widgetConfig: newConfig,
-    };
-
+    // Cập nhật trước trong store để người dùng thấy thay đổi ngay
     updateChatbot(botId!, { widgetConfig: newConfig });
 
     try {
-      await apiFetch("/api/bots", {
-        method: "POST",
-        body: JSON.stringify(updatedBot),
+      const payload = {
+        name: displayName,
+        greeting: welcomeMessage,
+        color: selectedColorIndex,
+      };
+      
+      console.log("📤 Gửi payload lên server:", payload);
+      
+      // Gọi API PUT /api/chatbot/<chatbot_id>
+      const res = await apiFetch(`/api/chatbot/${botId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+
+      console.log("📥 Phản hồi từ server:", res.status, res.ok);
+      
+      if (res.ok) {
+        const resData = await res.json();
+        console.log("📥 Dữ liệu server trả về:", resData);
+        
+        if (resData.data) {
+          // Cập nhật lại store với dữ liệu từ server để đồng bộ nhất
+          const { mapBackendBotToFrontend } = await import("@/store/chatbotStore");
+          const mappedBot = mapBackendBotToFrontend(resData.data);
+          console.log("🤖 Bot sau khi map:", mappedBot);
+          updateChatbot(botId!, mappedBot);
+          toast.success("Cập nhật widget thành công!");
+        } else {
+          toast.error("Server trả về dữ liệu không hợp lệ!");
+        }
+      } else {
+        const errorText = await res.text();
+        console.error("❌ Lỗi server:", errorText);
+        toast.error("Cập nhật widget thất bại!");
+      }
     } catch (e) {
-      console.error("Error saving widget configuration:", e);
+      console.error("❌ Lỗi kết nối máy chủ:", e);
+      toast.error("Lỗi kết nối máy chủ!");
     } finally {
       setSaving(false);
     }
@@ -91,7 +121,7 @@ export default function BotWidgetDesignPage() {
               <div className="grid grid-cols-5 gap-2">
                 {DEFAULT_AVATARS.map((av, index) => (
                   <button
-                    key={av.id}
+                    key={index}
                     type="button"
                     onClick={() => setSelectedColorIndex(index)}
                     className={`p-2 rounded-btn border-2 transition-all cursor-pointer ${
@@ -151,60 +181,103 @@ export default function BotWidgetDesignPage() {
         </p>
 
         {/* Chat Window Mockup */}
-        <div className="w-full max-w-[320px] bg-white dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card shadow-2xl flex flex-col overflow-hidden animate-scaleIn">
+        <div className="w-full max-w-[380px] bg-white dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-[24px] shadow-2xl flex flex-col overflow-hidden animate-scaleIn">
           {/* Header bar */}
           <div
             className="p-4 text-white flex items-center justify-between shadow-sm transition-colors duration-300"
             style={{ backgroundColor: primaryColor }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-white/20 border border-white/10 flex items-center justify-center text-white text-xs font-bold shadow-inner overflow-hidden">
-                {bot.avatarUrl ? (
-                  <img
-                    src={bot.avatarUrl}
-                    alt={displayName}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  displayName.substring(0, 2).toUpperCase() || "AI"
-                )}
+              <div className="w-10 h-10 rounded-full bg-white/20 border border-white/10 flex items-center justify-center text-white text-xs font-bold shadow-inner overflow-hidden">
+                <img
+                  src={bot.avatarUrl}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold leading-tight truncate">
+                <p className="text-base font-bold leading-tight truncate">
                   {displayName || "Trợ lý AI"}
                 </p>
-                <p className="text-[9px] opacity-80 leading-none">● Trực tuyến</p>
+                <p className="text-xs opacity-80 leading-none flex items-center gap-1">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                  Online
+                </p>
               </div>
             </div>
-            <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-white text-[10px] font-bold cursor-pointer hover:bg-white/20">
+            <button className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white text-sm font-bold cursor-pointer hover:bg-white/20 transition-colors">
               ✕
-            </div>
+            </button>
           </div>
 
           {/* Messages Body */}
-          <div className="p-4 space-y-3 h-52 overflow-y-auto bg-slate-50 dark:bg-neutral-900/50">
-            <div className="flex gap-2.5 items-start">
-              <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold shrink-0 text-text-muted">
+          <div className="p-4 space-y-3 h-72 overflow-y-auto bg-slate-50 dark:bg-neutral-900/50">
+            <div className="flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold shrink-0 text-text-muted">
                 AI
               </div>
-              <div className="bg-white dark:bg-zinc-800 border border-surface-border dark:border-dark-border rounded-card rounded-tl-none p-3 text-xs text-text-secondary dark:text-textDark-primary leading-relaxed max-w-[85%] shadow-sm">
-                {welcomeMessage}
+              <div className="flex flex-col gap-1">
+                <div className="bg-white dark:bg-zinc-800 border border-surface-border dark:border-dark-border rounded-[16px] rounded-tl-none p-3 text-sm text-text-secondary dark:text-textDark-primary leading-relaxed max-w-[260px] shadow-sm">
+                  {welcomeMessage}
+                </div>
+                <span className="text-[10px] text-gray-400 ml-2">10:01 AM</span>
+              </div>
+            </div>
+
+            {/* Example user message */}
+            <div className="flex gap-3 items-start justify-end">
+              <div className="flex flex-col gap-1 items-end">
+                <div
+                  className="rounded-[16px] rounded-tr-none p-3 text-sm text-white leading-relaxed max-w-[260px] shadow-sm"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  Tôi đã đọc xong tài liệu rồi
+                </div>
+                <span className="text-[10px] text-gray-400 mr-2">10:02 AM</span>
+              </div>
+            </div>
+
+            {/* Example assistant reply */}
+            <div className="flex gap-3 items-start">
+              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold shrink-0 text-text-muted">
+                AI
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="bg-white dark:bg-zinc-800 border border-surface-border dark:border-dark-border rounded-[16px] rounded-tl-none p-3 text-sm text-text-secondary dark:text-textDark-primary leading-relaxed max-w-[260px] shadow-sm">
+                  Tôi không có thông tin trong tài liệu đã cung cấp.
+                </div>
+                <span className="text-[10px] text-gray-400 ml-2">10:03 AM</span>
               </div>
             </div>
           </div>
 
           {/* Footer Input */}
-          <div className="p-3 border-t border-surface-border dark:border-dark-border bg-white dark:bg-dark-card flex items-center gap-2">
-            <div className="flex-1 bg-surface-input dark:bg-dark-input px-3 py-2 rounded-pill text-[10px] text-text-muted dark:text-textDark-secondary border border-surface-border/50 dark:border-dark-border/50">
-              Nhập tin nhắn...
-            </div>
+          <div className="p-4 border-t border-surface-border dark:border-dark-border bg-white dark:bg-dark-card flex items-center gap-3">
+            <input
+              type="text"
+              placeholder="Nhập tin nhắn..."
+              className="flex-1 bg-surface-input dark:bg-dark-input px-4 py-3 rounded-full text-sm text-text-primary dark:text-textDark-primary border border-gray-200 dark:border-dark-border focus:outline-none transition"
+              style={{
+                outline: "none",
+                borderColor: primaryColor,
+                boxShadow: `0 0 0 2px ${primaryColor}20`
+              }}
+              disabled
+            />
             <button
-              className="w-8 h-8 rounded-full text-white flex items-center justify-center shrink-0 shadow-md transition-transform hover:scale-105"
+              className="w-10 h-10 rounded-full text-white flex items-center justify-center shrink-0 shadow-md transition-transform hover:scale-105"
               style={{ backgroundColor: primaryColor }}
               type="button"
             >
-              <ArrowRight size={13} />
+              <ArrowRight size={16} />
             </button>
+          </div>
+
+          {/* Powered by footer */}
+          <div className="bg-gray-50 dark:bg-neutral-900/30 py-2 text-center">
+            <p className="text-[10px] text-gray-400">
+              Powered by <span className="text-brand font-semibold">Bittech RAG</span>
+            </p>
           </div>
         </div>
       </div>

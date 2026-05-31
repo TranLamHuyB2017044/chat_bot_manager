@@ -253,41 +253,35 @@ export default function CreateBotPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
-                    Chọn màu nhận diện chatbot
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                    {DEFAULT_AVATARS.map((av, index) => (
-                      <button
-                        key={av.id}
-                        type="button"
-                        onClick={() => {
-                          setColorIndex(index);
-                        }}
-                        className={cn(
-                          "flex items-center gap-2 p-3 rounded-btn border transition-all text-left cursor-pointer",
-                          colorIndex === index
-                            ? "border-brand bg-brand/5 dark:bg-brand/10 ring-2 ring-brand/25"
-                            : "border-surface-border dark:border-dark-border hover:bg-surface-input dark:hover:bg-dark-input"
-                        )}
-                      >
-                        {av.isImage ? (
-                          <div className="w-5 h-5 rounded-full overflow-hidden shrink-0 shadow-sm">
-                            <img src={av.id} alt={av.label} className="w-full h-full object-cover" />
-                          </div>
-                        ) : (
-                          <div
-                            className="w-5 h-5 rounded-full shrink-0 shadow-sm"
-                            style={{ backgroundColor: av.color }}
-                          />
-                        )}
-                        <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary truncate">
-                          {av.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
+                Chọn màu chủ đề chatbot
+              </label>
+              <div className="grid grid-cols-5 gap-3">
+                {DEFAULT_AVATARS.map((av, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setColorIndex(index);
+                    }}
+                    className={cn(
+                      "flex flex-col items-center gap-2 p-3 rounded-btn border transition-all cursor-pointer",
+                      colorIndex === index
+                        ? "border-brand bg-brand/5 dark:bg-brand/10 ring-2 ring-brand/25"
+                        : "border-surface-border dark:border-dark-border hover:bg-surface-input dark:hover:bg-dark-input"
+                    )}
+                  >
+                    <div
+                      className="w-10 h-10 rounded-full shrink-0 shadow-sm"
+                      style={{ backgroundColor: av.color }}
+                    />
+                    <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary text-center">
+                      {av.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
               </div>
             )}
 

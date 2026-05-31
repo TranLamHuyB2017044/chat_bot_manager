@@ -7,7 +7,7 @@ import { Copy, Check, Code, Sparkles, BookOpen, Laptop, Globe, Server, CheckCirc
 import { cn } from "@/lib/utils";
 import { getBackendUrl } from "@/lib/api";
 
-type Platform = "html" | "wordpress" | "nextjs" | "shopify" | "php";
+type Platform = "html" | "wordpress" | "nextjs"  | "php";
 
 export default function BotEmbedPage() {
   const { id: botId } = useParams<{ id: string }>();
@@ -128,15 +128,7 @@ export default function ChatWidget() {
         "Khởi động lại dev server Next.js."
       ],
     },
-    shopify: {
-      title: "Nhúng vào cửa hàng Shopify",
-      steps: [
-        "Truy cập trang Shopify Admin -> Online Store -> Themes.",
-        "Nhấp vào Actions (...) bên cạnh theme hiện tại và chọn Edit Code.",
-        "Mở file theme.liquid.",
-        "Dán đoạn script CDN ở trên ngay trước thẻ đóng </body> và nhấn Save."
-      ],
-    },
+
     php: {
       title: "Nhúng vào mã nguồn PHP / CMS khác",
       steps: [
@@ -210,7 +202,6 @@ export default function ChatWidget() {
               { id: "html", label: "HTML", icon: Globe },
               { id: "wordpress", label: "WordPress", icon: Laptop },
               { id: "nextjs", label: "Next.js", icon: Code },
-              { id: "shopify", label: "Shopify", icon: Server },
               { id: "php", label: "PHP", icon: Server },
             ].map((p) => {
               const Icon = p.icon;
