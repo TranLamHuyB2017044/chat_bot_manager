@@ -68,7 +68,6 @@ export default function BotKnowledgePage() {
     }
 
     const eventSourceUrl = `${baseUrl}/api/events`;
-    console.log("Connecting to global SSE endpoint:", eventSourceUrl);
 
     // Prepare headers
     const headers: Record<string, string> = {
