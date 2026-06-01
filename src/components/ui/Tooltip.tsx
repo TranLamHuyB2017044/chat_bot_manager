@@ -28,7 +28,7 @@ export function Tooltip({ children, content, position = 'top' }: TooltipProps) {
       </div>
       {show && (
         <div
-          className={`absolute z-[9999] px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md whitespace-nowrap ${positionClasses[position]}`}
+          className={`absolute z-9999 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md whitespace-nowrap ${positionClasses[position]}`}
           style={{ pointerEvents: 'none' }}
         >
           {content}

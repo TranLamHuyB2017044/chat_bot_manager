@@ -185,7 +185,7 @@ export default function BotSessionsPage() {
                       {msg.question && (
                         <div className="flex gap-3 items-start justify-end">
                           <div className="flex flex-col gap-1 items-end max-w-[80%]">
-                            <div className="bg-brand text-white rounded-[16px] rounded-tr-none p-3 shadow-sm">
+                            <div className="bg-brand text-white rounded-2xl rounded-tr-none p-3 shadow-sm">
                               <p className="text-sm">{msg.question}</p>
                             </div>
                             <span className="text-[10px] text-text-muted dark:text-textDark-muted">
@@ -204,7 +204,7 @@ export default function BotSessionsPage() {
                             <MessageSquare size={14} className="text-brand" />
                           </div>
                           <div className="flex flex-col gap-1 max-w-[80%]">
-                            <div className="bg-white dark:bg-zinc-800 border border-surface-border dark:border-dark-border rounded-[16px] rounded-tl-none p-3 shadow-sm">
+                            <div className="bg-white dark:bg-zinc-800 border border-surface-border dark:border-dark-border rounded-2xl rounded-tl-none p-3 shadow-sm">
                               <p className="text-sm text-text-secondary dark:text-textDark-primary">
                                 {msg.answer}
                               </p>

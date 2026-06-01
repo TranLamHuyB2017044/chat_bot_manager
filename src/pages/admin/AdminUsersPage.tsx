@@ -4,10 +4,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuthStore } from "@/store/authStore";
-import { Search, UserPlus, Shield, ShieldOff, Trash2, X, Loader2 } from "lucide-react";
+import { Search, UserPlus, Eye, Power, PowerOff, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/Sonner";
 import { apiFetch } from "@/lib/api";
+import { User as UserType, PaginatedResponse } from "@/types/admin";
 
 const createUserSchema = z.object({
   username: z.string().min(1, "Vui lòng nhập tên đăng nhập"),
@@ -23,9 +24,12 @@ export default function UsersPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [showModal, setShowModal] = useState(false);
-
-  const [usersList, setUsersList] = useState<any[]>([]);
+  const [usersList, setUsersList] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
+  const [searchDebounce, setSearchDebounce] = useState("");
 
   const {
     register,
@@ -34,33 +38,59 @@ export default function UsersPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateUserFormData>({ resolver: zodResolver(createUserSchema) });
 
-  // Fetch actual registered accounts
+  // Fetch users from API
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await apiFetch("/api/admin/accounts");
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "10",
+      });
+      if (searchDebounce) {
+        params.append("search", searchDebounce);
+      }
+      const response = await apiFetch(`/api/admin/users?${params}`);
       const result = await response.json();
-      if (response.ok && result.data) {
-        const mappedUsers = result.data.map((acc: any) => ({
-          id: acc._id || acc.id,
-          name: acc.name || "Tài khoản vô danh",
-          email: acc.email || `${acc.name?.toLowerCase().replace(/\s+/g, "") || "user"}@example.com`,
-          role: acc.role !== undefined ? acc.role : 4, // 4: User
-          status: acc.status || "active",
-          joined: acc.created_at ? new Date(acc.created_at).toLocaleDateString("vi-VN") : "Gần đây"
-        }));
-        setUsersList(mappedUsers);
+      if (result.data) {
+        setUsersList(result.data.users);
+        setTotalPages(result.data.pagination.total_pages);
       }
     } catch (err) {
-      console.error("Error fetching accounts:", err);
+      console.error("Error fetching users:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  // Toggle user active status
+  const toggleUserActive = async (userId: string, currentStatus: boolean) => {
+    try {
+      const res = await apiFetch(`/api/admin/users/${userId}/toggle-active`, {
+        method: "PUT",
+      });
+      if (res.ok) {
+        toast.success(`Người dùng ${currentStatus ? "đã tắt" : "đã bật"}`);
+        fetchUsers();
+      } else {
+        toast.error("Có lỗi xảy ra");
+      }
+    } catch (err) {
+      toast.error("Có lỗi xảy ra");
+    }
+  };
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounce(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, searchDebounce]);
 
   useEffect(() => {
     // Redirect if not admin
@@ -146,23 +176,10 @@ export default function UsersPage() {
           <input
             type="text"
             placeholder="Tìm kiếm người dùng..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-btn text-sm bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary placeholder:text-text-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition"
           />
-        </div>
-
-        {/* Status filter tabs */}
-        <div className="flex rounded-btn overflow-hidden border border-surface-border dark:border-dark-border bg-surface-card dark:bg-dark-card">
-          {["Tất cả", "Active", "Banned"].map((f, i) => (
-            <button
-              key={f}
-              className={`px-3 py-1.5 text-xs font-medium transition ${i === 0
-                  ? "bg-brand text-white"
-                  : "text-text-muted dark:text-textDark-secondary hover:bg-surface-input dark:hover:bg-dark-input"
-                } ${i > 0 ? "border-l border-surface-border dark:border-dark-border" : ""}`}
-            >
-              {f}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -171,7 +188,7 @@ export default function UsersPage() {
         <table className="w-full text-sm">
           <thead className="bg-surface-page dark:bg-dark-page border-b border-surface-border dark:border-dark-border">
             <tr>
-              {["Người dùng", "Email", "Vai trò", "Trạng thái", "Ngày tham gia", "Hành động"].map((h) => (
+              {["Người dùng", "Email", "Điện thoại", "Trạng thái", "Chatbot", "Tin nhắn", "Ngày tham gia", "Hành động"].map((h) => (
                 <th
                   key={h}
                   className="text-left text-xs font-semibold text-text-muted dark:text-textDark-secondary px-4 py-3 uppercase tracking-wide"
@@ -184,7 +201,7 @@ export default function UsersPage() {
           <tbody className="divide-y divide-surface-border dark:divide-dark-border">
             {loading ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center">
+                <td colSpan={8} className="py-10 text-center">
                   <div className="flex justify-center items-center gap-2 text-brand">
                     <Loader2 className="animate-spin" size={20} />
                     <span className="text-xs font-semibold">Đang tải danh sách...</span>
@@ -193,7 +210,7 @@ export default function UsersPage() {
               </tr>
             ) : usersList.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-10 text-center text-xs text-text-muted">
+                <td colSpan={8} className="py-10 text-center text-xs text-text-muted">
                   Không tìm thấy người dùng nào
                 </td>
               </tr>
@@ -207,11 +224,16 @@ export default function UsersPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-full bg-brand/15 dark:bg-brand/10 flex items-center justify-center text-xs font-bold text-brand shrink-0">
-                        {userObj.name[0]}
+                        {userObj.fullname?.[0]?.toUpperCase() || "U"}
                       </div>
-                      <span className="font-medium text-text-primary dark:text-textDark-primary text-sm">
-                        {userObj.name}
-                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium text-text-primary dark:text-textDark-primary text-sm truncate">
+                          {userObj.fullname}
+                        </p>
+                        <p className="text-xs text-text-muted dark:text-textDark-muted truncate">
+                          @{userObj.username}
+                        </p>
+                      </div>
                     </div>
                   </td>
 
@@ -220,51 +242,56 @@ export default function UsersPage() {
                     {userObj.email}
                   </td>
 
-                  {/* Role */}
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${userObj.role === 0
-                        ? "bg-brand-soft text-success-text dark:bg-brand-softDark dark:text-brand"
-                        : "bg-surface-input dark:bg-dark-input text-text-muted dark:text-textDark-secondary"
-                      }`}>
-                      {getRoleLabel(userObj.role)}
-                    </span>
+                  {/* Phone */}
+                  <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary">
+                    {userObj.phone || "-"}
                   </td>
 
                   {/* Status */}
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${userObj.status === "active"
+                    <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${userObj.active
                         ? "bg-success-bg text-success-text"
-                        : userObj.status === "banned"
-                          ? "bg-danger-bg text-danger-text"
-                          : "bg-warning-bg text-warning-text"
+                        : "bg-danger-bg text-danger-text"
                       }`}>
-                      {userObj.status}
+                      {userObj.active ? "Hoạt động" : "Đã tắt"}
                     </span>
+                  </td>
+
+                  {/* Chatbots */}
+                  <td className="px-4 py-3 text-xs text-text-primary dark:text-textDark-primary">
+                    {userObj.chatbot_count || 0}
+                  </td>
+
+                  {/* Messages */}
+                  <td className="px-4 py-3 text-xs text-text-primary dark:text-textDark-primary">
+                    {userObj.total_messages || 0}
                   </td>
 
                   {/* Joined */}
                   <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary font-mono">
-                    {userObj.joined}
+                    {new Date(userObj.created_at).toLocaleDateString("vi-VN")}
                   </td>
 
                   {/* Actions */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button
+                        onClick={() => navigate(`/admin/users/${userObj.id}`)}
                         className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-brand-soft dark:hover:bg-brand-softDark hover:text-success-text transition"
-                        title={userObj.role === 0 ? "Hạ quyền" : "Nâng quyền Admin"}
+                        title="Xem chi tiết"
                       >
-                        {userObj.role === 0 ? (
-                          <ShieldOff size={14} />
-                        ) : (
-                          <Shield size={14} />
-                        )}
+                        <Eye size={14} />
                       </button>
                       <button
-                        className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-danger-bg hover:text-danger-text transition"
-                        title="Xoá tài khoản"
+                        onClick={() => toggleUserActive(userObj.id, userObj.active)}
+                        className={`p-1.5 rounded-btn transition ${
+                          userObj.active
+                            ? "text-text-muted dark:text-textDark-muted hover:bg-danger-bg hover:text-danger-text"
+                            : "text-text-muted dark:text-textDark-muted hover:bg-success-bg hover:text-success-text"
+                        }`}
+                        title={userObj.active ? "Tắt tài khoản" : "Bật tài khoản"}
                       >
-                        <Trash2 size={14} />
+                        {userObj.active ? <PowerOff size={14} /> : <Power size={14} />}
                       </button>
                     </div>
                   </td>
@@ -274,21 +301,45 @@ export default function UsersPage() {
         </table>
 
         {/* Table footer */}
-        <div className="px-4 py-3 border-t border-surface-border dark:border-dark-border flex items-center justify-between">
-          <p className="text-xs text-text-muted dark:text-textDark-secondary">
-            Hiển thị {usersList.length} / {usersList.length} người dùng
-          </p>
-          <div className="flex gap-1">
-            {["←", "1", "2", "→"].map((p) => (
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-surface-border dark:border-dark-border flex items-center justify-between">
+            <p className="text-xs text-text-muted dark:text-textDark-secondary">
+              Trang {page} / {totalPages}
+            </p>
+            <div className="flex gap-1">
               <button
-                key={p}
-                className="w-7 h-7 rounded-btn text-xs font-medium text-text-muted dark:text-textDark-secondary hover:bg-surface-input dark:hover:bg-dark-input transition flex items-center justify-center"
+                disabled={page <= 1}
+                onClick={() => setPage(Math.max(1, page - 1))}
+                className="w-7 h-7 rounded-btn text-xs font-medium text-text-muted dark:text-textDark-secondary hover:bg-surface-input dark:hover:bg-dark-input transition flex items-center justify-center disabled:opacity-50"
               >
-                {p}
+                ←
               </button>
-            ))}
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const pageNum = page <= 3 ? i + 1 : page + i - 2;
+                return pageNum > 0 && pageNum <= totalPages ? (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`w-7 h-7 rounded-btn text-xs font-medium transition flex items-center justify-center ${
+                      pageNum === page
+                        ? "bg-brand text-white"
+                        : "text-text-muted dark:text-textDark-secondary hover:bg-surface-input dark:hover:bg-dark-input"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ) : null;
+              })}
+              <button
+                disabled={page >= totalPages}
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                className="w-7 h-7 rounded-btn text-xs font-medium text-text-muted dark:text-textDark-secondary hover:bg-surface-input dark:hover:bg-dark-input transition flex items-center justify-center disabled:opacity-50"
+              >
+                →
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Create User Modal */}

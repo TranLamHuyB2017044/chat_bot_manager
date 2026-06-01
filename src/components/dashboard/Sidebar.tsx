@@ -11,7 +11,8 @@ import {
   Bot,
   Home,
   Users,
-  History
+  History,
+  BarChart3
 } from "lucide-react";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 
@@ -57,7 +58,9 @@ export default function Sidebar({ role }: { role: number }) {
   // Admin navigation list
   const ADMIN_NAV = [
     { href: "/admin", label: "Home", icon: Home },
-    { href: "/admin/users", label: "Accounts", icon: Users },
+    { href: "/admin/users", label: "Users", icon: Users },
+    { href: "/admin/chatbots", label: "Chatbots", icon: Bot },
+    { href: "/admin/stats", label: "Stats", icon: BarChart3 },
   ];
 
   return (
@@ -138,36 +141,7 @@ export default function Sidebar({ role }: { role: number }) {
               </Link>
             ))}
 
-            {/* Divider */}
-            <div className="h-px bg-sidebar-deepest/50 my-2 mx-2" />
 
-            <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
-              Bot Management
-            </p>
-            {GLOBAL_NAV.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                to={href}
-                className={cn(
-                  "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
-                  isActive(href)
-                    ? "bg-sidebar-active text-sidebar-navActive shadow-sm border-l-2 border-brand pl-2"
-                    : "text-sidebar-navText hover:bg-sidebar-hover hover:text-sidebar-navActive"
-                )}
-              >
-                <Icon
-                  size={15}
-                  className={cn(
-                    "shrink-0 transition-colors duration-200",
-                    isActive(href) ? "text-brand" : "text-sidebar-navSec group-hover:text-sidebar-navText"
-                  )}
-                />
-                <span className="truncate">{label}</span>
-                {isActive(href) && (
-                  <ChevronRight size={12} className="ml-auto text-brand opacity-60" />
-                )}
-              </Link>
-            ))}
 
             {/* Also show bot nav if in bot route */}
             {isBotRoute && activeBot && (

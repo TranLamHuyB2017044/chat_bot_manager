@@ -12,6 +12,10 @@ import BotSuccessPage from "@/pages/dashboard/bot/BotSuccessPage";
 import BotSessionsPage from "@/pages/dashboard/bot/BotSessionsPage";
 import AdminPage from "@/pages/admin/AdminPage";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
+import AdminChatbotsPage from "@/pages/admin/AdminChatbotsPage";
+import AdminChatbotDetailPage from "@/pages/admin/AdminChatbotDetailPage";
+import AdminUserDetailPage from "@/pages/admin/AdminUserDetailPage";
+import AdminStatsPage from "@/pages/admin/AdminStatsPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuthStore, useAuthHydration } from "@/store/authStore";
 import { Loader2 } from "lucide-react";
@@ -109,13 +113,45 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "admin/users",
-        element: (
-          <ProtectedRoute allowedRoles={[0]}>
-            <AdminUsersPage />
-          </ProtectedRoute>
-        ),
-      },
+                path: "admin/users",
+                element: (
+                  <ProtectedRoute allowedRoles={[0]}>
+                    <AdminUsersPage />
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: "admin/users/:id",
+                element: (
+                  <ProtectedRoute allowedRoles={[0]}>
+                    <AdminUserDetailPage />
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: "admin/chatbots",
+                element: (
+                  <ProtectedRoute allowedRoles={[0]}>
+                    <AdminChatbotsPage />
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: "admin/chatbots/:id",
+                element: (
+                  <ProtectedRoute allowedRoles={[0]}>
+                    <AdminChatbotDetailPage />
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: "admin/stats",
+                element: (
+                  <ProtectedRoute allowedRoles={[0]}>
+                    <AdminStatsPage />
+                  </ProtectedRoute>
+                ),
+              },
     ],
   },
   {
