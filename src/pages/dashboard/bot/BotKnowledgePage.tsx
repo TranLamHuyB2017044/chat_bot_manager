@@ -25,7 +25,7 @@ export default function BotKnowledgePage() {
   const { chatbots, updateChatbot } = useChatbotStore();
   // Get the store's get method for fresh state access
   const storeGet = useChatbotStore.getState;
-  
+
   const isHydrated = useStoreHydration();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const sseConnection = useRef<EventSource | null>(null);
@@ -44,7 +44,7 @@ export default function BotKnowledgePage() {
     if (isHydrated) {
       connectSSE();
     }
-    
+
     return () => {
       if (sseConnection.current) {
         sseConnection.current.close();
@@ -57,78 +57,73 @@ export default function BotKnowledgePage() {
     if (sseConnection.current) {
       sseConnection.current.close();
     }
-    
+
     const baseUrl = getBackendUrl();
     const apiKey = getApiKey();
     const deviceId = localStorage.getItem("device_id");
-    
+
     if (!apiKey) {
       console.warn("No API key available, skipping SSE connection");
       return;
     }
-    
+
     const eventSourceUrl = `${baseUrl}/api/events`;
     console.log("Connecting to global SSE endpoint:", eventSourceUrl);
-    
+
     // Prepare headers
     const headers: Record<string, string> = {
       "x-api-key": apiKey,
     };
-    
+
     if (deviceId) {
       headers["x-device-id"] = deviceId;
     }
-    
+
     // Use EventSourcePolyfill with custom headers
     const eventSource = new EventSourcePolyfill(eventSourceUrl, {
       headers
     });
     sseConnection.current = eventSource;
-    
+
     eventSource.addEventListener("connection", (event: any) => {
       console.log("SSE Connected:", JSON.parse(event.data));
     });
-    
+
     eventSource.addEventListener("document_status", (event: any) => {
       try {
         const docData = JSON.parse(event.data);
-        console.log("Received document_status event:", docData);
-        
+
         const documentId = docData.document_id || docData._id;
-        console.log("Looking for document with ID:", documentId);
-        
+
         if (!documentId) return;
-        
+
         // Get FRESH current state from store
         const { chatbots: freshChatbots } = storeGet();
-        
+
         // Get current bot from store
         const currentBot = freshChatbots.find(b => b.id === botId);
         if (!currentBot) {
           console.log("No current bot found with ID:", botId);
           return;
         }
-        
-        console.log("Current bot files:", currentBot.knowledgeBase.files.map(f => ({ id: f._id, name: f.name, status: f.status })));
-        
+
+
         // Check if this document belongs to current bot's knowledge base
-        const existingFileIndex = currentBot.knowledgeBase.files.findIndex(f => 
+        const existingFileIndex = currentBot.knowledgeBase.files.findIndex(f =>
           f._id === documentId
         );
-        
+
         if (existingFileIndex === -1) {
           console.log("Document not found in current files, refreshing all documents");
           fetchDocuments();
           return;
         }
-        
-        console.log("Found existing file at index:", existingFileIndex);
-        
+
+
         // Update document status
         const newStatus = (docData.status?.toUpperCase() || currentBot.knowledgeBase.files[existingFileIndex].status) as "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-        
-        console.log("Updating file to status:", newStatus);
-        
+
+
         const updatedFiles: KnowledgeFile[] = currentBot.knowledgeBase.files.map((file: KnowledgeFile, index: number) => {
           if (index === existingFileIndex) {
             return {
@@ -144,20 +139,19 @@ export default function BotKnowledgePage() {
           }
           return file;
         });
-        
-        console.log("Updated files:", updatedFiles.map(f => ({ id: f._id, name: f.name, status: f.status })));
-        
+
+
         updateChatbot(botId!, {
           knowledgeBase: {
             ...currentBot.knowledgeBase,
             files: updatedFiles
           }
         });
-        
+
         // Show notification if status is final
         if (newStatus === "READY" || newStatus === "FAILED") {
           const file = updatedFiles.find(f => f._id === documentId);
-          
+
           if (file) {
             if (newStatus === "READY") {
               toast.success(`Tài liệu ${file.name} đã sẵn sàng!`);
@@ -170,7 +164,7 @@ export default function BotKnowledgePage() {
         console.error("Error parsing document_status event:", err);
       }
     });
-    
+
     eventSource.onerror = (err: any) => {
       console.error("SSE connection error:", err);
       eventSource.close();
@@ -239,7 +233,7 @@ export default function BotKnowledgePage() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !bot) return;
     const uploaded = Array.from(e.target.files);
-    
+
     setIsUpdating("upload");
     try {
       const workspaceId = bot.workspaceId || bot.id;
@@ -272,7 +266,7 @@ export default function BotKnowledgePage() {
   const handleReplaceFile = async (documentId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !bot) return;
     const file = e.target.files[0];
-    
+
     setIsUpdating(documentId);
     try {
       const workspaceId = bot.workspaceId || bot.id;
@@ -363,9 +357,9 @@ export default function BotKnowledgePage() {
               </h2>
             </div>
             <Tooltip content="Làm mới danh sách tài liệu">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={fetchDocuments}
                 className="text-xs h-7"
               >
@@ -436,7 +430,7 @@ export default function BotKnowledgePage() {
                               />
                             </label>
                           </Tooltip>
-                          
+
                           {/* Reindex */}
                           <Tooltip content="Reindex tài liệu">
                             <button
@@ -447,7 +441,7 @@ export default function BotKnowledgePage() {
                               <RefreshCw size={14} className={isUpdating === file._id ? "animate-spin" : ""} />
                             </button>
                           </Tooltip>
-                          
+
                           {/* Delete */}
                           <Tooltip content="Xóa tài liệu">
                             <button
@@ -466,7 +460,7 @@ export default function BotKnowledgePage() {
                     {(file.status === "UPLOADED" || file.status === "PROCESSING") && (
                       <div className="mt-3">
                         <div className="h-1.5 bg-surface-input dark:bg-dark-input rounded-full overflow-hidden">
-                          <div 
+                          <div
                             className="h-full bg-brand transition-all duration-500 animate-pulse"
                             style={{ width: `${file.progress}%` }}
                           />
