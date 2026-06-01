@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface TooltipProps {
   children: React.ReactElement;
@@ -8,32 +9,82 @@ interface TooltipProps {
 
 export function Tooltip({ children, content, position = 'top' }: TooltipProps) {
   const [show, setShow] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLElement>(null);
 
-  const positionClasses = {
-    top: 'bottom-full mb-2 left-1/2 -translate-x-1/2',
-    bottom: 'top-full mt-2 left-1/2 -translate-x-1/2',
-    left: 'right-full mr-2 top-1/2 -translate-y-1/2',
-    right: 'left-full ml-2 top-1/2 -translate-y-1/2'
+  useEffect(() => {
+    if (show && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      let top = 0;
+      let left = 0;
+
+      switch (position) {
+        case 'top':
+          top = rect.top - 8;
+          left = rect.left + rect.width / 2;
+          break;
+        case 'bottom':
+          top = rect.bottom + 8;
+          left = rect.left + rect.width / 2;
+          break;
+        case 'left':
+          top = rect.top + rect.height / 2;
+          left = rect.left - 8;
+          break;
+        case 'right':
+          top = rect.top + rect.height / 2;
+          left = rect.right + 8;
+          break;
+      }
+
+      setTooltipPosition({ top, left });
+    }
+  }, [show, position]);
+
+  const positionTransforms = {
+    top: 'translateX(-50%) translateY(-100%)',
+    bottom: 'translateX(-50%)',
+    left: 'translateX(-100%) translateY(-50%)',
+    right: 'translateY(-50%)'
   };
 
   return (
-    <div className="relative inline-block">
-      <div
-        onMouseEnter={() => setShow(true)}
-        onMouseLeave={() => setShow(false)}
-        onFocus={() => setShow(true)}
-        onBlur={() => setShow(false)}
-      >
-        {children}
-      </div>
-      {show && (
-        <div
-          className={`absolute z-9999 px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md whitespace-nowrap ${positionClasses[position]}`}
-          style={{ pointerEvents: 'none' }}
-        >
-          {content}
-        </div>
-      )}
-    </div>
+    <>
+      {React.cloneElement(children, {
+        ref: triggerRef,
+        onMouseEnter: (e: React.MouseEvent) => {
+          setShow(true);
+          children.props.onMouseEnter?.(e);
+        },
+        onMouseLeave: (e: React.MouseEvent) => {
+          setShow(false);
+          children.props.onMouseLeave?.(e);
+        },
+        onFocus: (e: React.FocusEvent) => {
+          setShow(true);
+          children.props.onFocus?.(e);
+        },
+        onBlur: (e: React.FocusEvent) => {
+          setShow(false);
+          children.props.onBlur?.(e);
+        }
+      })}
+      {show &&
+        createPortal(
+          <div
+            className="fixed px-2 py-1 text-xs font-medium text-white bg-gray-800 rounded-md whitespace-nowrap"
+            style={{
+              top: tooltipPosition.top,
+              left: tooltipPosition.left,
+              transform: positionTransforms[position],
+              pointerEvents: 'none',
+              zIndex: 9999
+            }}
+          >
+            {content}
+          </div>,
+          document.body
+        )}
+    </>
   );
 }

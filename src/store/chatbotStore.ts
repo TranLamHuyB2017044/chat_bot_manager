@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 
 export const DEFAULT_AVATARS = [
-  { color: "#4f46e5", label: "Mặc định" }, // DEFAULT = 0
-  { color: "#3b82f6", label: "Xanh dương" }, // BLUE = 1
-  { color: "#10b981", label: "Xanh lá" }, // GREEN = 2
-  { color: "#8b5cf6", label: "Tím" }, // PURPLE = 3
-  { color: "#ec4899", label: "Hồng" }, // PINK = 4
+  { color: "#4f46e5", label: "Mặc định", id: "https://api-ocr.bittechx.cloud/chatbot_logo.jpeg", isImage: false }, // DEFAULT = 0
+  { color: "#3b82f6", label: "Xanh dương", id: "https://api-ocr.bittechx.cloud/chatbot_logo.jpeg", isImage: false }, // BLUE = 1
+  { color: "#10b981", label: "Xanh lá", id: "https://api-ocr.bittechx.cloud/chatbot_logo.jpeg", isImage: false }, // GREEN = 2
+  { color: "#8b5cf6", label: "Tím", id: "https://api-ocr.bittechx.cloud/chatbot_logo.jpeg", isImage: false }, // PURPLE = 3
+  { color: "#ec4899", label: "Hồng", id: "https://api-ocr.bittechx.cloud/chatbot_logo.jpeg", isImage: false }, // PINK = 4
 ];
 
 export interface KnowledgeFile {

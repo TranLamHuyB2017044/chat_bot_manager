@@ -17,15 +17,18 @@ import {
   FileUp,
   AlertCircle
 } from "lucide-react";
-import { apiFetch, getBackendUrl } from "@/lib/api";
+import { apiFetch, getBackendUrl, getApiKey } from "@/lib/api";
+import { EventSourcePolyfill } from "event-source-polyfill";
 
 export default function BotKnowledgePage() {
   const { id: botId } = useParams<{ id: string }>();
   const { chatbots, updateChatbot } = useChatbotStore();
+  // Get the store's get method for fresh state access
+  const storeGet = useChatbotStore.getState;
   
   const isHydrated = useStoreHydration();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
-  const sseConnections = useRef<Record<string, EventSource>>({});
+  const sseConnection = useRef<EventSource | null>(null);
 
   const bot = chatbots.find((b) => b.id === botId);
 
@@ -36,12 +39,144 @@ export default function BotKnowledgePage() {
     }
   }, [botId, isHydrated]);
 
-  // Cleanup all SSE connections on unmount
+  // Connect to global SSE endpoint
   useEffect(() => {
+    if (isHydrated) {
+      connectSSE();
+    }
+    
     return () => {
-      Object.values(sseConnections.current).forEach((es) => es.close());
+      if (sseConnection.current) {
+        sseConnection.current.close();
+        sseConnection.current = null;
+      }
     };
-  }, []);
+  }, [isHydrated]);
+
+  const connectSSE = () => {
+    if (sseConnection.current) {
+      sseConnection.current.close();
+    }
+    
+    const baseUrl = getBackendUrl();
+    const apiKey = getApiKey();
+    const deviceId = localStorage.getItem("device_id");
+    
+    if (!apiKey) {
+      console.warn("No API key available, skipping SSE connection");
+      return;
+    }
+    
+    const eventSourceUrl = `${baseUrl}/api/events`;
+    console.log("Connecting to global SSE endpoint:", eventSourceUrl);
+    
+    // Prepare headers
+    const headers: Record<string, string> = {
+      "x-api-key": apiKey,
+    };
+    
+    if (deviceId) {
+      headers["x-device-id"] = deviceId;
+    }
+    
+    // Use EventSourcePolyfill with custom headers
+    const eventSource = new EventSourcePolyfill(eventSourceUrl, {
+      headers
+    });
+    sseConnection.current = eventSource;
+    
+    eventSource.addEventListener("connection", (event: any) => {
+      console.log("SSE Connected:", JSON.parse(event.data));
+    });
+    
+    eventSource.addEventListener("document_status", (event: any) => {
+      try {
+        const docData = JSON.parse(event.data);
+        console.log("Received document_status event:", docData);
+        
+        const documentId = docData.document_id || docData._id;
+        console.log("Looking for document with ID:", documentId);
+        
+        if (!documentId) return;
+        
+        // Get FRESH current state from store
+        const { chatbots: freshChatbots } = storeGet();
+        
+        // Get current bot from store
+        const currentBot = freshChatbots.find(b => b.id === botId);
+        if (!currentBot) {
+          console.log("No current bot found with ID:", botId);
+          return;
+        }
+        
+        console.log("Current bot files:", currentBot.knowledgeBase.files.map(f => ({ id: f._id, name: f.name, status: f.status })));
+        
+        // Check if this document belongs to current bot's knowledge base
+        const existingFileIndex = currentBot.knowledgeBase.files.findIndex(f => 
+          f._id === documentId
+        );
+        
+        if (existingFileIndex === -1) {
+          console.log("Document not found in current files, refreshing all documents");
+          fetchDocuments();
+          return;
+        }
+        
+        console.log("Found existing file at index:", existingFileIndex);
+        
+        // Update document status
+        const newStatus = (docData.status?.toUpperCase() || currentBot.knowledgeBase.files[existingFileIndex].status) as "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
+        
+        console.log("Updating file to status:", newStatus);
+        
+        const updatedFiles: KnowledgeFile[] = currentBot.knowledgeBase.files.map((file: KnowledgeFile, index: number) => {
+          if (index === existingFileIndex) {
+            return {
+              ...file,
+              name: docData.file_name || docData.filename || file.name,
+              filename: docData.filename || docData.file_name || file.filename,
+              status: newStatus,
+              total_chunks: docData.total_chunks,
+              error_message: docData.error,
+              size: docData.size || file.size,
+              progress: newStatus === "READY" ? 100 : newStatus === "FAILED" ? 0 : 50
+            };
+          }
+          return file;
+        });
+        
+        console.log("Updated files:", updatedFiles.map(f => ({ id: f._id, name: f.name, status: f.status })));
+        
+        updateChatbot(botId!, {
+          knowledgeBase: {
+            ...currentBot.knowledgeBase,
+            files: updatedFiles
+          }
+        });
+        
+        // Show notification if status is final
+        if (newStatus === "READY" || newStatus === "FAILED") {
+          const file = updatedFiles.find(f => f._id === documentId);
+          
+          if (file) {
+            if (newStatus === "READY") {
+              toast.success(`Tài liệu ${file.name} đã sẵn sàng!`);
+            } else if (newStatus === "FAILED" && docData.error) {
+              toast.error(`Xử lý tài liệu thất bại: ${docData.error}`);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error parsing document_status event:", err);
+      }
+    });
+    
+    eventSource.onerror = (err: any) => {
+      console.error("SSE connection error:", err);
+      eventSource.close();
+      sseConnection.current = null;
+    };
+  };
 
   const fetchDocuments = async () => {
     if (!bot) return;
@@ -68,123 +203,9 @@ export default function BotKnowledgePage() {
             files: mappedDocs,
           }
         });
-        // Start SSE for non-final states
-        mappedDocs.forEach((doc: KnowledgeFile) => {
-          if (doc._id && (doc.status === "UPLOADED" || doc.status === "PROCESSING")) {
-            startSSE(doc._id);
-          }
-        });
       }
     } catch (err) {
       console.error("Error fetching documents:", err);
-    }
-  };
-
-  const startSSE = (documentId: string) => {
-    // Close existing connection if any
-    if (sseConnections.current[documentId]) {
-      sseConnections.current[documentId].close();
-    }
-
-    const baseUrl = getBackendUrl();
-    const eventSource = new EventSource(
-      `${baseUrl}/api/rag/documents/${documentId}/status/sse`
-    );
-
-    sseConnections.current[documentId] = eventSource;
-
-    eventSource.onmessage = (event) => {
-      try {
-        const docData = JSON.parse(event.data);
-        // Get current bot from store
-        const currentBot = chatbots.find(b => b.id === botId);
-        if (!currentBot) return;
-        
-        // Create updated files array
-        const updatedFiles: KnowledgeFile[] = currentBot.knowledgeBase.files.map((file: KnowledgeFile) => {
-          if (file._id === documentId) {
-            const newStatus = (docData.status?.toUpperCase() || file.status) as "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-            return {
-              ...file,
-              status: newStatus,
-              total_chunks: docData.total_chunks,
-              error_message: docData.error_message,
-              updated_at: docData.updated_at,
-              progress: newStatus === "READY" ? 100 : newStatus === "FAILED" ? 0 : 50
-            };
-          }
-          return file;
-        });
-        
-        // Update the store
-        updateChatbot(botId!, {
-          knowledgeBase: {
-            ...currentBot.knowledgeBase,
-            files: updatedFiles
-          }
-        });
-        
-        // Close connection if status is final
-        const finalFile = updatedFiles.find(f => f._id === documentId);
-        if (finalFile && (finalFile.status === "READY" || finalFile.status === "FAILED")) {
-          eventSource.close();
-          delete sseConnections.current[documentId];
-          
-          if (finalFile.status === "READY") {
-            toast.success(`Tài liệu ${finalFile.name} đã sẵn sàng!`);
-          } else if (finalFile.status === "FAILED" && finalFile.error_message) {
-            toast.error(`Xử lý tài liệu thất bại: ${finalFile.error_message}`);
-          }
-        }
-      } catch (err) {
-        console.error("Error parsing SSE message:", err);
-      }
-    };
-
-    eventSource.onerror = (err) => {
-      console.error("SSE connection error:", err);
-      eventSource.close();
-      delete sseConnections.current[documentId];
-      
-      // Fallback to fetching document status once
-      fetchDocumentStatus(documentId);
-    };
-  };
-
-  const fetchDocumentStatus = async (documentId: string) => {
-    if (!bot) return;
-    try {
-      const res = await apiFetch(`/api/rag/documents/${documentId}/status`);
-      const data = await res.json();
-      if (data && data.data) {
-        const docData = data.data;
-        const currentBot = chatbots.find(b => b.id === botId);
-        if (!currentBot) return;
-        
-        const updatedFiles: KnowledgeFile[] = currentBot.knowledgeBase.files.map((file: KnowledgeFile) => {
-          if (file._id === documentId) {
-            const newStatus = (docData.status?.toUpperCase() || file.status) as "UPLOADED" | "PROCESSING" | "READY" | "FAILED";
-            return {
-              ...file,
-              status: newStatus,
-              total_chunks: docData.total_chunks,
-              error_message: docData.error_message,
-              updated_at: docData.updated_at,
-              progress: newStatus === "READY" ? 100 : newStatus === "FAILED" ? 0 : 50
-            };
-          }
-          return file;
-        });
-        
-        updateChatbot(botId!, {
-          knowledgeBase: {
-            ...currentBot.knowledgeBase,
-            files: updatedFiles
-          }
-        });
-      }
-    } catch (err) {
-      console.error("Error fetching document status:", err);
     }
   };
 
@@ -265,7 +286,7 @@ export default function BotKnowledgePage() {
 
       if (res.ok) {
         toast.success("Đã thay thế file! Đang xử lý lại...");
-        await fetchDocuments(); // Refresh and start SSE
+        await fetchDocuments(); // Refresh
       } else {
         toast.error("Không thể thay thế file. Vui lòng thử lại!");
       }
@@ -287,7 +308,7 @@ export default function BotKnowledgePage() {
 
       if (res.ok) {
         toast.success("Đang reindex tài liệu...");
-        await fetchDocuments(); // Refresh and start SSE
+        await fetchDocuments(); // Refresh
       } else {
         toast.error("Không thể reindex tài liệu. Vui lòng thử lại!");
       }
@@ -309,11 +330,6 @@ export default function BotKnowledgePage() {
       });
 
       if (res.ok) {
-        // Close SSE connection if exists
-        if (sseConnections.current[documentId]) {
-          sseConnections.current[documentId].close();
-          delete sseConnections.current[documentId];
-        }
         // Remove from store
         const filteredFiles: KnowledgeFile[] = bot.knowledgeBase.files.filter((f: KnowledgeFile) => f._id !== documentId);
         updateChatbot(botId!, {
@@ -487,7 +503,7 @@ export default function BotKnowledgePage() {
               <input
                 type="file"
                 multiple
-                accept=".pdf,.txt,.docx,.csv"
+                accept=".png,.jpg,.jpeg,.pdf,.md,.docx,.doc"
                 onChange={handleFileUpload}
                 className="absolute inset-0 opacity-0 cursor-pointer"
                 disabled={isUpdating === "upload"}
@@ -501,7 +517,7 @@ export default function BotKnowledgePage() {
                 {isUpdating === "upload" ? "Đang xử lý..." : "Chọn file để tải lên"}
               </span>
               <span className="text-[10px] text-text-muted dark:text-textDark-secondary mt-1">
-                PDF, TXT, DOCX, CSV
+                PNG, JPG, JPEG, PDF, MD, DOCX, DOC
               </span>
             </div>
             <div className="flex gap-2 p-3 bg-brand-soft dark:bg-brand-softDark border border-brand/10 rounded-btn text-[10px] text-brand leading-relaxed">
