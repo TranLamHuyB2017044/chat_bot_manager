@@ -51,12 +51,26 @@ export default function UsersPage() {
       }
       const response = await apiFetch(`/api/admin/users?${params}`);
       const result = await response.json();
-      if (result.data) {
-        setUsersList(result.data.users);
-        setTotalPages(result.data.pagination.total_pages);
+      console.log("[GET /api/admin/users Data]:", result);
+
+      if (result && result.data) {
+        const users = Array.isArray(result.data)
+          ? result.data
+          : (result.data.users ?? []);
+        setUsersList(users);
+
+        const totalP =
+          result.data.pagination?.total_pages ??
+          result.pagination?.total_pages ??
+          (Array.isArray(result.data) ? Math.ceil(result.data.length / 10) : 1);
+        setTotalPages(Math.max(1, totalP));
+      } else {
+        setUsersList([]);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error("Error fetching users:", err);
+      setUsersList([]);
     } finally {
       setLoading(false);
     }
@@ -154,7 +168,7 @@ export default function UsersPage() {
             Quản lý người dùng
           </h1>
           <p className="text-sm text-text-muted dark:text-textDark-secondary mt-0.5">
-            {usersList.length} tài khoản trong hệ thống
+            {(usersList || []).length} tài khoản trong hệ thống
           </p>
         </div>
         <button
@@ -208,95 +222,98 @@ export default function UsersPage() {
                   </div>
                 </td>
               </tr>
-            ) : usersList.length === 0 ? (
+            ) : (!usersList || usersList.length === 0) ? (
               <tr>
                 <td colSpan={8} className="py-10 text-center text-xs text-text-muted">
                   Không tìm thấy người dùng nào
                 </td>
               </tr>
             ) : (
-              usersList.map((userObj) => (
-                <tr
-                  key={userObj.id}
-                  className="hover:bg-surface-page dark:hover:bg-dark-page transition-colors"
-                >
-                  {/* Avatar + Name */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-brand/15 dark:bg-brand/10 flex items-center justify-center text-xs font-bold text-brand shrink-0">
-                        {userObj.fullname?.[0]?.toUpperCase() || "U"}
+              (usersList || []).map((userObj) => {
+                const uid = userObj._id || userObj.id || userObj.account_id || "";
+                return (
+                  <tr
+                    key={uid}
+                    className="hover:bg-surface-page dark:hover:bg-dark-page transition-colors"
+                  >
+                    {/* Avatar + Name */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-brand/15 dark:bg-brand/10 flex items-center justify-center text-xs font-bold text-brand shrink-0">
+                          {userObj.fullname?.[0]?.toUpperCase() || "U"}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-text-primary dark:text-textDark-primary text-sm truncate">
+                            {userObj.fullname}
+                          </p>
+                          <p className="text-xs text-text-muted dark:text-textDark-muted truncate">
+                            @{userObj.username}
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-text-primary dark:text-textDark-primary text-sm truncate">
-                          {userObj.fullname}
-                        </p>
-                        <p className="text-xs text-text-muted dark:text-textDark-muted truncate">
-                          @{userObj.username}
-                        </p>
+                    </td>
+
+                    {/* Email */}
+                    <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary">
+                      {userObj.email}
+                    </td>
+
+                    {/* Phone */}
+                    <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary">
+                      {userObj.phone || "-"}
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${userObj.active
+                          ? "bg-success-bg text-success-text"
+                          : "bg-danger-bg text-danger-text"
+                        }`}>
+                        {userObj.active ? "Hoạt động" : "Đã tắt"}
+                      </span>
+                    </td>
+
+                    {/* Chatbots */}
+                    <td className="px-4 py-3 text-xs text-text-primary dark:text-textDark-primary">
+                      {userObj.chatbot_count || 0}
+                    </td>
+
+                    {/* Messages */}
+                    <td className="px-4 py-3 text-xs text-text-primary dark:text-textDark-primary">
+                      {userObj.total_messages || 0}
+                    </td>
+
+                    {/* Joined */}
+                    <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary font-mono">
+                      {userObj.created_at ? new Date(userObj.created_at).toLocaleDateString("vi-VN") : "-"}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => navigate(`/admin/users/${uid}`)}
+                          className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-brand-soft dark:hover:bg-brand-softDark hover:text-success-text transition"
+                          title="Xem chi tiết"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => toggleUserActive(uid, userObj.active)}
+                          className={`p-1.5 rounded-btn transition ${
+                            userObj.active
+                              ? "text-text-muted dark:text-textDark-muted hover:bg-danger-bg hover:text-danger-text"
+                              : "text-text-muted dark:text-textDark-muted hover:bg-success-bg hover:text-success-text"
+                          }`}
+                          title={userObj.active ? "Tắt tài khoản" : "Bật tài khoản"}
+                        >
+                          {userObj.active ? <PowerOff size={14} /> : <Power size={14} />}
+                        </button>
                       </div>
-                    </div>
-                  </td>
-
-                  {/* Email */}
-                  <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary">
-                    {userObj.email}
-                  </td>
-
-                  {/* Phone */}
-                  <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary">
-                    {userObj.phone || "-"}
-                  </td>
-
-                  {/* Status */}
-                  <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-pill font-semibold ${userObj.active
-                        ? "bg-success-bg text-success-text"
-                        : "bg-danger-bg text-danger-text"
-                      }`}>
-                      {userObj.active ? "Hoạt động" : "Đã tắt"}
-                    </span>
-                  </td>
-
-                  {/* Chatbots */}
-                  <td className="px-4 py-3 text-xs text-text-primary dark:text-textDark-primary">
-                    {userObj.chatbot_count || 0}
-                  </td>
-
-                  {/* Messages */}
-                  <td className="px-4 py-3 text-xs text-text-primary dark:text-textDark-primary">
-                    {userObj.total_messages || 0}
-                  </td>
-
-                  {/* Joined */}
-                  <td className="px-4 py-3 text-xs text-text-muted dark:text-textDark-secondary font-mono">
-                    {new Date(userObj.created_at).toLocaleDateString("vi-VN")}
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => navigate(`/admin/users/${userObj.id}`)}
-                        className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-brand-soft dark:hover:bg-brand-softDark hover:text-success-text transition"
-                        title="Xem chi tiết"
-                      >
-                        <Eye size={14} />
-                      </button>
-                      <button
-                        onClick={() => toggleUserActive(userObj.id, userObj.active)}
-                        className={`p-1.5 rounded-btn transition ${
-                          userObj.active
-                            ? "text-text-muted dark:text-textDark-muted hover:bg-danger-bg hover:text-danger-text"
-                            : "text-text-muted dark:text-textDark-muted hover:bg-success-bg hover:text-success-text"
-                        }`}
-                        title={userObj.active ? "Tắt tài khoản" : "Bật tài khoản"}
-                      >
-                        {userObj.active ? <PowerOff size={14} /> : <Power size={14} />}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )))}
+                    </td>
+                  </tr>
+                );
+              }))}
           </tbody>
         </table>
 

@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
-import { Loader2, MessageSquare, HelpCircle, Coins, MessageCircle, Calendar, TrendingUp, TrendingDown, Clock, User } from "lucide-react";
+import {
+  useChatbotStore,
+  useStoreHydration,
+  mapBackendBotToFrontend,
+} from "@/store/chatbotStore";
+import { Loader2, MessageSquare, HelpCircle, Coins, MessageCircle, Calendar, TrendingUp, TrendingDown, Clock, User, Power, PowerOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
+import { toast } from "@/components/ui/Sonner";
 
 interface Analytics {
   quota: {
@@ -32,40 +37,44 @@ interface Analytics {
 
 export default function BotOverviewPage() {
   const { id: botId } = useParams<{ id: string }>();
-  const { chatbots, updateChatbot } = useChatbotStore();
+  const { chatbots, updateChatbot, updateChatbotApi, fetchChatbots } = useChatbotStore();
   const isHydrated = useStoreHydration();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
-  // Fetch updated stats from API server
+  // Fetch chatbots first, then fetch individual bot and analytics
   useEffect(() => {
     if (botId && isHydrated) {
-      apiFetch(`/api/chatbot/${botId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.data) {
-            const { mapBackendBotToFrontend } = require("@/store/chatbotStore");
-            const mappedBot = mapBackendBotToFrontend(data.data);
-            updateChatbot(botId, mappedBot);
-          }
-        })
-        .catch((err) => console.error("Error fetching chatbot:", err));
+      // First fetch all chatbots to make sure the store is populated
+      fetchChatbots().then(() => {
+        // Then fetch the individual chatbot details
+        apiFetch(`/api/chatbot/${botId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.data) {
+              const mappedBot = mapBackendBotToFrontend(data.data);
+              updateChatbot(mappedBot.id, mappedBot);
+            }
+          })
+          .catch((err) => console.error("Error fetching chatbot:", err));
 
-      // Fetch analytics
-      apiFetch(`/api/chatbot/${botId}/analytics`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.data) {
-            setAnalytics(data.data);
-          }
-          setLoadingAnalytics(false);
-        })
-        .catch((err) => {
-          console.error("Error fetching analytics:", err);
-          setLoadingAnalytics(false);
-        });
+        // Fetch analytics
+        apiFetch(`/api/chatbot/${botId}/analytics`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.data) {
+              setAnalytics(data.data);
+            }
+            setLoadingAnalytics(false);
+          })
+          .catch((err) => {
+            console.error("Error fetching analytics:", err);
+            setLoadingAnalytics(false);
+          });
+      });
     }
-  }, [botId, isHydrated]);
+  }, [botId, isHydrated, fetchChatbots]);
 
   const bot = chatbots.find((b) => b.id === botId);
 
@@ -95,8 +104,83 @@ export default function BotOverviewPage() {
   const fileCount = bot.knowledgeBase.files.filter((f) => f.type !== "url").length;
   const pageCount = bot.knowledgeBase.files.filter((f) => f.type === "url").length;
 
+  const handleToggleStatus = async () => {
+    if (!bot) return;
+    setTogglingStatus(true);
+    const nextStatus = bot.status === "active" ? "inactive" : "active";
+    try {
+      await updateChatbotApi(bot.id, { status: nextStatus });
+      toast.success(nextStatus === "active" ? "Đã mở lại chatbot thành công!" : "Đã tạm dừng chatbot!");
+    } catch (err: any) {
+      toast.error("Không thể thay đổi trạng thái chatbot");
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-fadeIn">
+      {/* Bot Info & Status Header */}
+      <div className="bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-surface-border dark:border-dark-border bg-surface-input flex items-center justify-center">
+            {bot.avatarUrl ? (
+              <img src={bot.avatarUrl} alt={bot.name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="font-bold text-sm text-brand">{bot.name.substring(0, 2).toUpperCase()}</span>
+            )}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-text-primary dark:text-textDark-primary">
+                {bot.name}
+              </h2>
+              <span className="px-2 py-0.5 rounded-pill text-[10px] font-bold uppercase tracking-wider bg-brand/10 text-brand">
+                {bot.domain || "general"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={cn(
+                "inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-pill",
+                bot.status === "active" 
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" 
+                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              )}>
+                <span className={cn("w-1.5 h-1.5 rounded-full", bot.status === "active" ? "bg-emerald-500" : "bg-amber-500")} />
+                {bot.status === "active" ? "Đang hoạt động" : "Đã tạm dừng"}
+              </span>
+              <span className="text-[11px] text-text-muted dark:text-textDark-secondary">
+                • Tạo ngày {bot.createdAt}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <button
+            onClick={handleToggleStatus}
+            disabled={togglingStatus}
+            className={cn(
+              "px-3.5 py-2 rounded-btn text-xs font-semibold flex items-center gap-2 transition cursor-pointer border",
+              bot.status === "active"
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
+                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+            )}
+          >
+            {bot.status === "active" ? (
+              <>
+                <PowerOff size={14} />
+                <span>{togglingStatus ? "Đang xử lý..." : "Tạm dừng chatbot"}</span>
+              </>
+            ) : (
+              <>
+                <Power size={14} />
+                <span>{togglingStatus ? "Đang xử lý..." : "Mở lại chatbot"}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
       
 
       {/* Quota Section */}
@@ -258,7 +342,7 @@ export default function BotOverviewPage() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="animate-spin text-brand" size={20} />
             </div>
-          ) : analytics?.top_keywords.today.length > 0 ? (
+          ) : analytics && analytics.top_keywords?.today && analytics.top_keywords.today.length > 0 ? (
             <div className="space-y-3">
               <p className="text-xs font-semibold text-text-secondary dark:text-textDark-secondary">Hôm nay</p>
               <div className="flex flex-wrap gap-2">
@@ -269,7 +353,7 @@ export default function BotOverviewPage() {
                   </div>
                 ))}
               </div>
-              {analytics.top_keywords.week.length > 0 && (
+              {analytics.top_keywords.week && analytics.top_keywords.week.length > 0 && (
                 <>
                   <p className="text-xs font-semibold text-text-secondary dark:text-textDark-secondary pt-2">Tuần này</p>
                   <div className="flex flex-wrap gap-2">

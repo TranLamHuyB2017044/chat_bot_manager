@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { toast } from "@/components/ui/Sonner";
 import { Avatar } from "@/components/Avatar";
-import { useChatbotStore, KnowledgeFile, DEFAULT_AVATARS } from "@/store/chatbotStore";
+import { useChatbotStore, KnowledgeFile, DEFAULT_AVATARS, CHATBOT_DOMAINS } from "@/store/chatbotStore";
 import {
   ArrowRight,
   ArrowLeft,
@@ -27,7 +27,9 @@ export default function CreateBotPage() {
   // Step 1: Basic Info
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [domain, setDomain] = useState("ecommerce");
   const [colorIndex, setColorIndex] = useState(0);
+  const [collectContactInfo, setCollectContactInfo] = useState(true);
 
   // Step 2: Knowledge Base
   const [files, setFiles] = useState<KnowledgeFile[]>([]);
@@ -116,9 +118,11 @@ export default function CreateBotPage() {
         description,
         avatarUrl: DEFAULT_AVATARS[colorIndex].id,
         color: colorIndex,
+        domain,
         greeting,
         workspaceName: name, // Workspace name maps to bot name
         files: actualFiles,
+        collectContactInfo,
       });
 
       if (!newBotId) {
@@ -252,6 +256,23 @@ export default function CreateBotPage() {
                   />
                 </div>
 
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
+                    Lĩnh vực hoạt động (Domain)
+                  </label>
+                  <select
+                    value={domain}
+                    onChange={(e) => setDomain(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-btn text-sm bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition cursor-pointer"
+                  >
+                    {CHATBOT_DOMAINS.map((d) => (
+                      <option key={d.value} value={d.value}>
+                        {d.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="space-y-2">
               <label className="text-sm font-medium text-text-secondary dark:text-textDark-secondary">
                 Chọn màu chủ đề chatbot
@@ -282,8 +303,28 @@ export default function CreateBotPage() {
                 ))}
               </div>
             </div>
-              </div>
-            )}
+
+            {/* Collect contact info checkbox */}
+            <div className="pt-2">
+              <label className="flex items-start gap-3 p-3.5 rounded-btn bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border hover:border-brand/50 transition cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={collectContactInfo}
+                  onChange={(e) => setCollectContactInfo(e.target.checked)}
+                  className="mt-0.5 rounded border-surface-border text-brand focus:ring-brand cursor-pointer w-4 h-4"
+                />
+                <div className="flex flex-col select-none">
+                  <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary">
+                    Tự động thu thập thông tin liên hệ (Email / Số điện thoại)
+                  </span>
+                  <span className="text-[11px] text-text-muted dark:text-textDark-secondary mt-0.5 leading-relaxed">
+                    Chatbot sẽ nhận diện và thu thập email hoặc số điện thoại của khách hàng khi họ để lại thông tin trong cuộc trò chuyện.
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
+        )}
 
             {/* Step 2: Knowledge Base */}
             {step === 2 && (
@@ -477,10 +518,21 @@ export default function CreateBotPage() {
                     </p>
                     <div className="space-y-1.5 text-xs text-text-secondary dark:text-textDark-primary">
                       <div className="flex justify-between">
+                        <span>Lĩnh vực (Domain):</span>
+                        <span className="font-semibold text-brand">
+                          {CHATBOT_DOMAINS.find(d => d.value === domain)?.label || domain}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
                         <span>Số file tài liệu:</span>
                         <span className="font-semibold">{files.filter(f => f.type !== "url").length} files</span>
                       </div>
-                     
+                      <div className="flex justify-between">
+                        <span>Thu thập thông tin KH:</span>
+                        <span className={cn("font-semibold", collectContactInfo ? "text-brand" : "text-text-muted")}>
+                          {collectContactInfo ? "Bật" : "Tắt"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

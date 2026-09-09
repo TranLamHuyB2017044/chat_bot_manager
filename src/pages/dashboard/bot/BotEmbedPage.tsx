@@ -3,11 +3,11 @@ import { useParams } from "react-router-dom";
 import { toast } from "@/components/ui/Sonner";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
-import { Copy, Check, Code, Sparkles, BookOpen, Laptop, Globe, Server, CheckCircle2, MessageSquare, Save } from "lucide-react";
+import { Copy, Check, Code, Sparkles, BookOpen, Laptop, Globe, Server, CheckCircle2, MessageSquare, Save, Webhook } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBackendUrl } from "@/lib/api";
 
-type TabType = "html" | "wordpress" | "nextjs" | "php" | "telegram";
+type TabType = "html" | "wordpress" | "nextjs" | "php" | "telegram" | "webhook";
 
 export default function BotEmbedPage() {
   const { id: botId } = useParams<{ id: string }>();
@@ -18,16 +18,20 @@ export default function BotEmbedPage() {
   const [telegramEnabled, setTelegramEnabled] = useState(false);
   const [telegramBotToken, setTelegramBotToken] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
+  const [workflowWebhookUrl, setWorkflowWebhookUrl] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const bot = chatbots.find((b) => b.id === botId);
 
-  // Sync state with bot's telegramConfig
+  // Sync state with bot's telegramConfig and workflowWebhookUrl
   useEffect(() => {
-    if (bot && bot.telegramConfig) {
-      setTelegramEnabled(bot.telegramConfig.enabled);
-      setTelegramBotToken(bot.telegramConfig.botToken);
-      setTelegramChatId(bot.telegramConfig.chatId);
+    if (bot) {
+      if (bot.telegramConfig) {
+        setTelegramEnabled(bot.telegramConfig.enabled);
+        setTelegramBotToken(bot.telegramConfig.botToken);
+        setTelegramChatId(bot.telegramConfig.chatId);
+      }
+      setWorkflowWebhookUrl(bot.workflowWebhookUrl || "");
     }
   }, [bot]);
 
@@ -127,7 +131,23 @@ export default function ChatWidget() {
       toast.success("Đã lưu cấu hình Telegram thành công!");
     } catch (err) {
       console.error("Failed to save Telegram config:", err);
-      toast.error("Không thể lưu cấu hình. Vui lòng thử lại!");
+      toast.error("Lưu cấu hình Telegram thất bại!");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveWebhookConfig = async () => {
+    if (!botId) return;
+    setIsSaving(true);
+    try {
+      await updateChatbotApi(botId, {
+        workflowWebhookUrl: workflowWebhookUrl.trim(),
+      });
+      toast.success("Đã lưu cấu hình Webhook Workflow thành công!");
+    } catch (err: any) {
+      console.error("Failed to save Webhook config:", err);
+      toast.error("Lưu cấu hình Webhook thất bại!");
     } finally {
       setIsSaving(false);
     }
@@ -176,6 +196,15 @@ export default function ChatWidget() {
         "Tìm ID của nhóm/chat Telegram của bạn bằng cách sử dụng @userinfobot hoặc @getidsbot.",
         "Nhập Bot Token và Chat ID vào các trường bên dưới.",
         "Bật tính năng và nhấn Lưu cấu hình."
+      ],
+    },
+    webhook: {
+      title: "Cấu hình Webhook Workflow (n8n / Make / Automation)",
+      steps: [
+        "Tạo một workflow tiếp nhận sự kiện trên n8n, Make hoặc server riêng của bạn bằng Webhook Trigger (HTTP POST).",
+        "Copy URL webhook nhận dữ liệu.",
+        "Dán vào trường Workflow Webhook URL bên dưới và lưu lại.",
+        "Chatbot sẽ tự động gửi webhook payload tương ứng khi có tin nhắn hoặc tác vụ cần xử lý."
       ],
     }
   };
@@ -245,6 +274,7 @@ export default function ChatWidget() {
               { id: "nextjs", label: "Next.js", icon: Code },
               { id: "php", label: "PHP", icon: Server },
               { id: "telegram", label: "Telegram", icon: MessageSquare },
+              { id: "webhook", label: "Webhook (n8n)", icon: Webhook },
             ].map((p) => {
               const Icon = p.icon;
               return (
@@ -317,6 +347,44 @@ export default function ChatWidget() {
                     {isSaving ? "Đang lưu..." : (
                       <>
                         <Save size={14} className="mr-1" /> Lưu cấu hình
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : activeTab === "webhook" ? (
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-text-primary dark:text-textDark-primary">
+                  {platformGuides[activeTab].title}
+                </h3>
+                <ol className="list-decimal pl-4 space-y-2 text-xs text-text-secondary dark:text-textDark-primary">
+                  {platformGuides[activeTab].steps.map((stepText, idx) => (
+                    <li key={idx} className="pl-1.5 leading-relaxed">
+                      {stepText}
+                    </li>
+                  ))}
+                </ol>
+                <div className="space-y-3 pt-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-text-primary dark:text-textDark-primary">
+                      Workflow Webhook URL (POST)
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://your-n8n.cloud/webhook/..."
+                      value={workflowWebhookUrl}
+                      onChange={(e) => setWorkflowWebhookUrl(e.target.value)}
+                      className="w-full bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border rounded-btn px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleSaveWebhookConfig}
+                    disabled={isSaving}
+                    className="mt-2"
+                  >
+                    {isSaving ? "Đang lưu..." : (
+                      <>
+                        <Save size={14} className="mr-1" /> Lưu cấu hình Webhook
                       </>
                     )}
                   </Button>

@@ -12,12 +12,13 @@ export interface UserStats {
 }
 
 export interface User {
-  id: string;
-  user_id: number;
+  id?: string;
+  _id?: string;
+  user_id?: number;
   username: string;
   fullname: string;
   email: string;
-  phone: string;
+  phone?: string;
   avatar_url?: string;
   role: number;
   active: boolean;
@@ -39,14 +40,21 @@ export interface User {
 export interface Chatbot {
   id: string;
   name: string;
-  description: string;
-  avatar_url: string;
-  workspace_id: string;
+  description?: string;
+  avatar_url?: string;
+  color?: number;
+  domain?: string;
+  greeting?: string;
+  workspace_id?: string;
   account_id: string;
   public_token: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
+  workflow_webhook_url?: string;
+  collect_contact_info?: boolean;
   message_count?: number;
   latest_message_at?: string;
   user?: {

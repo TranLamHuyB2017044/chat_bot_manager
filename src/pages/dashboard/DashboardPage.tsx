@@ -80,6 +80,12 @@ export default function DashboardPage() {
               Quản lý, huấn luyện và lấy mã nhúng widget cho chatbot của bạn
             </p>
           </div>
+          <button
+            onClick={() => navigate("/dashboard/create")}
+            className="px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-btn transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>+ Tạo Chatbot</span>
+          </button>
         </div>
       )}
 
@@ -96,9 +102,15 @@ export default function DashboardPage() {
           <h2 className="text-lg font-bold text-text-primary dark:text-textDark-primary mb-2">
             Bạn chưa có chatbot nào
           </h2>
-          <p className="text-xs text-text-muted dark:text-textDark-secondary max-w-sm mb-8 leading-relaxed">
-            Liên hệ quản trị viên để tạo chatbot cho bạn.
+          <p className="text-xs text-text-muted dark:text-textDark-secondary max-w-sm mb-6 leading-relaxed">
+            Tạo chatbot đầu tiên của bạn để bắt đầu.
           </p>
+          <button
+            onClick={() => navigate("/dashboard/create")}
+            className="px-4 py-2.5 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-btn transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+          >
+            Tạo Chatbot
+          </button>
         </div>
       ) : (
         // Chatbot Card
@@ -142,6 +154,10 @@ export default function DashboardPage() {
                 {bot.status === "active" ? (
                   <Badge variant="success" dot>
                     Đang hoạt động
+                  </Badge>
+                ) : bot.status === "inactive" ? (
+                  <Badge variant="secondary" dot>
+                    Đã tạm dừng
                   </Badge>
                 ) : (
                   <Badge variant="warning" dot className="animate-pulse">

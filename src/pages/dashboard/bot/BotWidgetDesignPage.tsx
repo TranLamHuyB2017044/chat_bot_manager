@@ -17,6 +17,7 @@ export default function BotWidgetDesignPage() {
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [displayName, setDisplayName] = useState("");
   const [welcomeMessage, setWelcomeMessage] = useState("");
+  const [collectContactInfo, setCollectContactInfo] = useState(true);
 
   const bot = chatbots.find((b) => b.id === botId);
 
@@ -27,6 +28,7 @@ export default function BotWidgetDesignPage() {
       setSelectedColorIndex(colorIndex >= 0 ? colorIndex : 0);
       setDisplayName(bot.widgetConfig.displayName || bot.name);
       setWelcomeMessage(bot.widgetConfig.welcomeMessage || "Xin chào!");
+      setCollectContactInfo(bot.collectContactInfo !== undefined ? bot.collectContactInfo : true);
     }
   }, [bot]);
 
@@ -59,6 +61,7 @@ export default function BotWidgetDesignPage() {
         name: displayName,
         greeting: welcomeMessage,
         color: selectedColorIndex,
+        collect_contact_info: collectContactInfo,
       };
       
       const res = await apiFetch(`/api/chatbot/${botId}`, {
@@ -143,6 +146,21 @@ export default function BotWidgetDesignPage() {
                 rows={3}
                 className="w-full px-3 py-2.5 rounded-btn text-xs bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition resize-none"
               />
+            </div>
+
+            {/* Collect contact info setting */}
+            <div className="pt-1">
+              <label className="flex items-center gap-2.5 text-xs text-text-primary dark:text-textDark-primary cursor-pointer p-2.5 rounded-btn bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border hover:border-brand/50 transition">
+                <input
+                  type="checkbox"
+                  checked={collectContactInfo}
+                  onChange={(e) => setCollectContactInfo(e.target.checked)}
+                  className="rounded border-surface-border text-brand focus:ring-brand cursor-pointer"
+                />
+                <span className="font-medium select-none">
+                  Thu thập thông tin khách hàng (Email / SĐT)
+                </span>
+              </label>
             </div>
           </div>
         </div>

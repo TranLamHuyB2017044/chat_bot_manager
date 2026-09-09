@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Bot, User, Calendar, MessageSquare, Loader2, Power, PowerOff } from "lucide-react";
+import { ArrowLeft, Bot, User, Calendar, MessageSquare, Loader2, Power, PowerOff, LayoutDashboard, ExternalLink } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { Chatbot, Message } from "@/types/admin";
 import { toast } from "@/components/ui/Sonner";
@@ -94,21 +94,32 @@ export default function AdminChatbotDetailPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-fadeIn">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          onClick={() => navigate("/admin/chatbots")}
-          className="p-2 rounded-btn hover:bg-surface-input dark:hover:bg-dark-input transition"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <div>
-          <h1 className="text-xl font-bold text-text-primary dark:text-textDark-primary">
-            {chatbot.name}
-          </h1>
-          <p className="text-sm text-text-muted dark:text-textDark-secondary mt-0.5">
-            {chatbot.description}
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/admin/chatbots")}
+            className="p-2 rounded-btn hover:bg-surface-input dark:hover:bg-dark-input transition"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-text-primary dark:text-textDark-primary">
+              {chatbot.name}
+            </h1>
+            <p className="text-sm text-text-muted dark:text-textDark-secondary mt-0.5">
+              {chatbot.description || "Không có mô tả."}
+            </p>
+          </div>
         </div>
+
+        <button
+          onClick={() => navigate(`/dashboard/bot/${chatbot.id}`)}
+          className="flex items-center gap-2 px-4 py-2 rounded-btn text-xs font-bold bg-brand text-white hover:bg-brand-hover transition shadow-sm cursor-pointer"
+        >
+          <LayoutDashboard size={15} />
+          <span>Vào trang quản lý Chatbot (Dashboard)</span>
+          <ExternalLink size={13} className="opacity-70" />
+        </button>
       </div>
 
       {/* Chatbot Info */}
@@ -166,7 +177,7 @@ export default function AdminChatbotDetailPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-surface-border dark:border-dark-border">
+            <div className="pt-3 border-t border-surface-border dark:border-dark-border space-y-2">
               <button
                 onClick={toggleChatbotActive}
                 className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-btn text-sm font-semibold transition ${
@@ -177,6 +188,14 @@ export default function AdminChatbotDetailPage() {
               >
                 {chatbot.is_active ? <PowerOff size={16} /> : <Power size={16} />}
                 {chatbot.is_active ? "Tắt chatbot" : "Bật chatbot"}
+              </button>
+
+              <button
+                onClick={() => navigate(`/dashboard/bot/${chatbot.id}`)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-btn text-xs font-semibold border border-brand/40 text-brand hover:bg-brand/10 transition cursor-pointer"
+              >
+                <LayoutDashboard size={14} />
+                <span>Quản lý Tri thức, Widget & Cài đặt</span>
               </button>
             </div>
           </div>

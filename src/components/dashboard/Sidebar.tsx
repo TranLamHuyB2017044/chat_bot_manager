@@ -22,8 +22,14 @@ export default function Sidebar({ role }: { role: number }) {
   const isHydrated = useStoreHydration();
 
   // Determine if we are inside a bot route
-  const isBotRoute = pathname.includes("/dashboard/bot/");
-  const botId = isBotRoute ? pathname.split("/dashboard/bot/")[1]?.split("/")[0] : null;
+  const isDashboardBot = pathname.includes("/dashboard/bot/");
+  const isAdminBot = pathname.includes("/admin/chatbots/") && Boolean(pathname.split("/admin/chatbots/")[1]);
+  const isBotRoute = isDashboardBot || isAdminBot;
+  const botId = isDashboardBot
+    ? pathname.split("/dashboard/bot/")[1]?.split("/")[0]
+    : isAdminBot
+    ? pathname.split("/admin/chatbots/")[1]?.split("/")[0]
+    : null;
   const activeBot = isHydrated && botId ? chatbots.find((b) => b.id === botId) : null;
 
   const isActive = (href: string) => {
@@ -60,6 +66,7 @@ export default function Sidebar({ role }: { role: number }) {
     { href: "/admin", label: "Home", icon: Home },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/chatbots", label: "Chatbots", icon: Bot },
+    { href: "/dashboard", label: "My Chatbots", icon: LayoutDashboard },
     { href: "/admin/stats", label: "Stats", icon: BarChart3 },
   ];
 
@@ -80,27 +87,27 @@ export default function Sidebar({ role }: { role: number }) {
       </div>
 
       {/* Active Bot Quick Info Card (If inside a bot space) */}
-      {isBotRoute && activeBot && (
+      {isBotRoute && (
         <div className="px-3 py-3 border-b border-sidebar-deepest/50 bg-sidebar-active/30">
           <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-btn bg-sidebar-active/50 border border-sidebar-deepest/30">
             <Avatar
-              src={activeBot.avatarUrl}
-              alt={activeBot.name}
-              fallbackText={activeBot.name}
+              src={activeBot?.avatarUrl}
+              alt={activeBot?.name || "Chatbot"}
+              fallbackText={activeBot?.name || "CB"}
               size="sm"
               backgroundColor="rgba(45, 184, 122, 0.2)"
             />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-sidebar-navActive truncate">
-                {activeBot.name}
+                {activeBot?.name || "Chatbot"}
               </p>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className={cn(
                   "w-1.5 h-1.5 rounded-full shrink-0",
-                  activeBot.status === "active" ? "bg-success animate-pulse" : "bg-warning animate-bounce"
+                  activeBot?.status === "active" ? "bg-success animate-pulse" : "bg-warning animate-bounce"
                 )} />
                 <span className="text-[9px] text-sidebar-navText truncate capitalize">
-                  {activeBot.status === "active" ? "Đang hoạt động" : "Đang huấn luyện"}
+                  {activeBot ? (activeBot.status === "active" ? "Đang hoạt động" : "Đã tạm dừng") : "Đang tải..."}
                 </span>
               </div>
             </div>
@@ -144,7 +151,7 @@ export default function Sidebar({ role }: { role: number }) {
 
 
             {/* Also show bot nav if in bot route */}
-            {isBotRoute && activeBot && (
+            {isBotRoute && botId && (
               <>
                 <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
                   Quản lý Bot
@@ -179,7 +186,7 @@ export default function Sidebar({ role }: { role: number }) {
         ) : (
           // Regular user navigation (only show bot nav if in bot route)
           <>
-            {isBotRoute && activeBot && (
+            {botId && (
               <>
                 <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-1 font-semibold">
                   Quản lý Bot

@@ -23,12 +23,18 @@ export default function AdminChatbotsPage() {
       });
       const res = await apiFetch(`/api/admin/chatbots?${params}`);
       const json = await res.json();
-      if (json.data) {
-        setChatbots(json.data.chatbots);
-        setTotalPages(json.data.pagination.total_pages);
+      console.log("[GET /api/admin/chatbots Data]:", json);
+
+      if (json && json.data) {
+        setChatbots(json.data.chatbots ?? []);
+        setTotalPages(json.data.pagination?.total_pages ?? 1);
+      } else {
+        setChatbots([]);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error("Error fetching chatbots:", err);
+      setChatbots([]);
     } finally {
       setLoading(false);
     }
@@ -63,9 +69,15 @@ export default function AdminChatbotsPage() {
             Quản lý Chatbot
           </h1>
           <p className="text-sm text-text-muted dark:text-textDark-secondary mt-0.5">
-            {chatbots.length} chatbot trong hệ thống
+            {(chatbots || []).length} chatbot trong hệ thống
           </p>
         </div>
+        <button
+          onClick={() => navigate("/dashboard/create")}
+          className="px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-btn transition shadow-sm flex items-center gap-1.5 cursor-pointer"
+        >
+          <span>+ Tạo Chatbot</span>
+        </button>
       </div>
 
       {/* Filters */}

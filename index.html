@@ -6,14 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BitTech Admin</title>
     
-    <!-- Content Security Policy (CSP) để ngăn XSS -->
+    <!-- Content Security Policy (CSP) -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' https://api-ocr.bittechx.cloud https://fonts.googleapis.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' http://192.168.1.9:9000 https://api-ocr.bittechx.cloud https://fonts.googleapis.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
-      img-src 'self' data: https:;
-      connect-src 'self' https://api-ocr.bittechx.cloud;
+      img-src 'self' data: https: http:;
+      connect-src 'self' http://192.168.1.9:9000 https://api-ocr.bittechx.cloud http: ws: wss:;
       frame-src 'none';
       object-src 'none';
       base-uri 'self';
