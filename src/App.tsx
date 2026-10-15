@@ -10,12 +10,14 @@ import BotWidgetDesignPage from "@/pages/dashboard/bot/BotWidgetDesignPage";
 import BotEmbedPage from "@/pages/dashboard/bot/BotEmbedPage";
 import BotSuccessPage from "@/pages/dashboard/bot/BotSuccessPage";
 import BotSessionsPage from "@/pages/dashboard/bot/BotSessionsPage";
+import BotCategoriesPage from "@/pages/dashboard/bot/BotCategoriesPage";
 import AdminPage from "@/pages/admin/AdminPage";
 import AdminUsersPage from "@/pages/admin/AdminUsersPage";
 import AdminChatbotsPage from "@/pages/admin/AdminChatbotsPage";
 import AdminChatbotDetailPage from "@/pages/admin/AdminChatbotDetailPage";
 import AdminUserDetailPage from "@/pages/admin/AdminUserDetailPage";
 import AdminStatsPage from "@/pages/admin/AdminStatsPage";
+import AdminAuditLogsPage from "@/pages/admin/AdminAuditLogsPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuthStore, useAuthHydration } from "@/store/authStore";
 import { Loader2 } from "lucide-react";
@@ -89,6 +91,10 @@ const router = createBrowserRouter([
         element: <BotKnowledgePage />,
       },
       {
+        path: "dashboard/bot/:id/categories",
+        element: <BotCategoriesPage />,
+      },
+      {
         path: "dashboard/bot/:id/widget-design",
         element: <BotWidgetDesignPage />,
       },
@@ -141,6 +147,14 @@ const router = createBrowserRouter([
                 element: (
                   <ProtectedRoute allowedRoles={[0]}>
                     <AdminChatbotDetailPage />
+                  </ProtectedRoute>
+                ),
+              },
+              {
+                path: "admin/audit-logs",
+                element: (
+                  <ProtectedRoute allowedRoles={[0]}>
+                    <AdminAuditLogsPage />
                   </ProtectedRoute>
                 ),
               },

@@ -25,6 +25,7 @@ export interface Chatbot {
   telegram_chat_id?: string;
   workflow_webhook_url?: string;
   collect_contact_info?: boolean;
+  show_sources?: boolean;
 }
 
 export interface AuthUser {

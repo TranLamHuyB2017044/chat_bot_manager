@@ -50,25 +50,16 @@ export function Tooltip({ children, content, position = 'top' }: TooltipProps) {
 
   return (
     <>
-      {React.cloneElement(children, {
-        ref: triggerRef,
-        onMouseEnter: (e: React.MouseEvent) => {
-          setShow(true);
-          children.props.onMouseEnter?.(e);
-        },
-        onMouseLeave: (e: React.MouseEvent) => {
-          setShow(false);
-          children.props.onMouseLeave?.(e);
-        },
-        onFocus: (e: React.FocusEvent) => {
-          setShow(true);
-          children.props.onFocus?.(e);
-        },
-        onBlur: (e: React.FocusEvent) => {
-          setShow(false);
-          children.props.onBlur?.(e);
-        }
-      })}
+      <span
+        ref={triggerRef}
+        className="inline-flex"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onFocus={() => setShow(true)}
+        onBlur={() => setShow(false)}
+      >
+        {children}
+      </span>
       {show &&
         createPortal(
           <div

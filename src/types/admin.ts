@@ -55,6 +55,7 @@ export interface Chatbot {
   telegram_chat_id?: string;
   workflow_webhook_url?: string;
   collect_contact_info?: boolean;
+  show_sources?: boolean;
   message_count?: number;
   latest_message_at?: string;
   user?: {

@@ -15,10 +15,14 @@ import {
   BookOpen,
   RefreshCw,
   FileUp,
-  AlertCircle
+  AlertCircle,
+  FolderKanban,
+  Tag
 } from "lucide-react";
 import { apiFetch, getBackendUrl, getApiKey } from "@/lib/api";
 import { EventSourcePolyfill } from "event-source-polyfill";
+import { Category } from "@/types/category";
+import { renderCategoryEmojiOrIcon } from "@/pages/dashboard/bot/BotCategoriesPage";
 
 export default function BotKnowledgePage() {
   const { id: botId } = useParams<{ id: string }>();
@@ -30,12 +34,39 @@ export default function BotKnowledgePage() {
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const sseConnection = useRef<EventSource | null>(null);
 
+  // Categories state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>("");
+  const [filterCategorySlug, setFilterCategorySlug] = useState<string>("ALL");
+
   const bot = chatbots.find((b) => b.id === botId);
 
-  // Fetch actual RAG documents on mount/hydration
+  // Fetch categories
+  const fetchCategories = async () => {
+    if (!bot) return;
+    const workspaceId = bot.workspaceId || bot.id;
+    try {
+      const res = await apiFetch(`/api/chatbot/workspaces/${workspaceId}/categories`);
+      const data = await res.json();
+      const isSuccess = res.ok || data?.statusCode === 200 || data?.status === "success";
+      if (isSuccess) {
+        const list = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+          ? data
+          : [];
+        setCategories(list);
+      }
+    } catch (err) {
+      console.error("Error fetching categories:", err);
+    }
+  };
+
+  // Fetch actual RAG documents and categories on mount/hydration
   useEffect(() => {
     if (bot && isHydrated) {
       fetchDocuments();
+      fetchCategories();
     }
   }, [botId, isHydrated]);
 
@@ -188,7 +219,11 @@ export default function BotKnowledgePage() {
           status: (d.status?.toUpperCase() || "UPLOADED") as "UPLOADED" | "PROCESSING" | "READY" | "FAILED",
           total_chunks: d.total_chunks,
           error_message: d.error_message,
-          updated_at: d.updated_at
+          updated_at: d.updated_at,
+          category_id: d.category_id,
+          category_slug: d.category_slug || d.category,
+          category_name: d.category_name,
+          category: d.category || d.category_slug
         }));
         updateChatbot(botId!, {
           knowledgeBase: {
@@ -241,14 +276,18 @@ export default function BotKnowledgePage() {
         formData.append("files", file);
       });
 
-      const res = await apiFetch(`/api/rag/workspaces/${workspaceId}/upload`, {
-        method: "POST",
-        body: formData,
-      });
+      const res = await apiFetch(
+        `/api/rag/workspaces/${workspaceId}/upload${selectedCategorySlug ? `?category=${encodeURIComponent(selectedCategorySlug)}` : ""}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (res.ok) {
         toast.success("Đã tải file lên! Đang xử lý...");
         await fetchDocuments();
+        await fetchCategories();
       } else {
         toast.error("Không thể tải file lên. Vui lòng thử lại!");
       }
@@ -348,24 +387,71 @@ export default function BotKnowledgePage() {
       {/* Left Columns: Resource directory */}
       <div className="lg:col-span-2 space-y-5 flex flex-col h-[calc(100vh-var(--topbar-height)-3.5rem)]">
         <div className="bg-surface-card dark:bg-dark-card border border-surface-border dark:border-dark-border rounded-card p-5 shadow-sm flex flex-col flex-1 overflow-hidden">
-          <div className="flex justify-between items-center border-b border-surface-border dark:border-dark-border pb-4 mb-4 shrink-0">
-            <div className="flex items-center gap-2">
-              <Database size={16} className="text-brand" />
-              <h2 className="text-sm font-bold text-text-primary dark:text-textDark-primary">
-                Cơ sở tri thức hiện tại
-              </h2>
+          <div className="flex flex-col gap-3 border-b border-surface-border dark:border-dark-border pb-4 mb-4 shrink-0">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Database size={16} className="text-brand" />
+                <h2 className="text-sm font-bold text-text-primary dark:text-textDark-primary">
+                  Cơ sở tri thức hiện tại
+                </h2>
+              </div>
+              <Tooltip content="Làm mới danh sách tài liệu">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    fetchDocuments();
+                    fetchCategories();
+                  }}
+                  className="text-xs h-7"
+                >
+                  <RefreshCw size={12} className="mr-1" />
+                  Làm mới
+                </Button>
+              </Tooltip>
             </div>
-            <Tooltip content="Làm mới danh sách tài liệu">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={fetchDocuments}
-                className="text-xs h-7"
-              >
-                <RefreshCw size={12} className="mr-1" />
-                Làm mới
-              </Button>
-            </Tooltip>
+
+            {/* Category Filter Pills */}
+            {categories.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                <span className="text-[11px] text-text-muted dark:text-textDark-secondary flex items-center gap-1 shrink-0 font-medium">
+                  <FolderKanban size={12} className="text-brand" /> Lọc:
+                </span>
+                <button
+                  onClick={() => setFilterCategorySlug("ALL")}
+                  className={`px-2.5 py-1 rounded-pill text-[11px] font-semibold transition shrink-0 ${
+                    filterCategorySlug === "ALL"
+                      ? "bg-brand text-white shadow-xs"
+                      : "bg-surface-input dark:bg-dark-input text-text-secondary dark:text-textDark-secondary hover:text-text-primary"
+                  }`}
+                >
+                  Tất cả ({bot.knowledgeBase.files.length})
+                </button>
+                {categories.map((cat) => {
+                  const count = bot.knowledgeBase.files.filter(
+                    (f) =>
+                      f.category_slug === cat.slug ||
+                      f.category === cat.slug ||
+                      f.category_name === cat.name
+                  ).length;
+                  return (
+                    <button
+                      key={cat.slug}
+                      onClick={() => setFilterCategorySlug(cat.slug)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-pill text-[11px] font-semibold transition shrink-0 ${
+                        filterCategorySlug === cat.slug
+                          ? "bg-brand text-white shadow-xs"
+                          : "bg-surface-input dark:bg-dark-input text-text-secondary dark:text-textDark-secondary hover:text-text-primary"
+                      }`}
+                    >
+                      {renderCategoryEmojiOrIcon(cat.icon, "text-xs", 11)}
+                      <span>{cat.name}</span>
+                      <span className="opacity-75">({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* List scroll container */}
@@ -376,9 +462,35 @@ export default function BotKnowledgePage() {
                 <p className="text-xs font-semibold">Chưa có tri thức nào được cung cấp</p>
                 <p className="text-[10px] mt-1">Sử dụng thanh công cụ bên phải để thêm tài liệu.</p>
               </div>
+            ) : bot.knowledgeBase.files.filter((f) => {
+                if (filterCategorySlug === "ALL") return true;
+                return (
+                  f.category_slug === filterCategorySlug ||
+                  f.category === filterCategorySlug ||
+                  categories.find((c) => c.slug === filterCategorySlug)?.name === f.category_name
+                );
+              }).length === 0 ? (
+              <div className="text-center py-16 text-text-muted dark:text-textDark-secondary">
+                <FolderKanban size={32} className="mx-auto mb-2 text-brand/30" />
+                <p className="text-xs font-semibold">Không có tài liệu nào trong chuyên mục này</p>
+              </div>
             ) : (
-              bot.knowledgeBase.files.map((file) => {
+              bot.knowledgeBase.files
+                .filter((f) => {
+                  if (filterCategorySlug === "ALL") return true;
+                  return (
+                    f.category_slug === filterCategorySlug ||
+                    f.category === filterCategorySlug ||
+                    categories.find((c) => c.slug === filterCategorySlug)?.name === f.category_name
+                  );
+                })
+                .map((file) => {
                 const statusProps = getStatusBadgeProps(file.status);
+                const fileCatName =
+                  file.category_name ||
+                  categories.find((c) => c.slug === (file.category_slug || file.category))?.name ||
+                  file.category_slug ||
+                  file.category;
                 return (
                   <div
                     key={file._id || file.name}
@@ -393,11 +505,17 @@ export default function BotKnowledgePage() {
                           <p className="text-sm font-semibold text-text-primary dark:text-textDark-primary truncate">
                             {file.name}
                           </p>
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <Badge variant={statusProps.variant}>
                               {statusProps.icon}
                               <span className="ml-1">{statusProps.text}</span>
                             </Badge>
+                            {fileCatName && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-pill bg-brand/10 text-brand">
+                                <Tag size={9} />
+                                {fileCatName}
+                              </span>
+                            )}
                             <span className="text-[10px] text-text-muted dark:text-textDark-secondary font-mono">
                               {(file.size / 1024).toFixed(1)} KB
                             </span>
@@ -492,6 +610,33 @@ export default function BotKnowledgePage() {
           </h3>
 
           <div className="space-y-4 animate-fadeIn">
+            {/* Category selection for uploading */}
+            {categories.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-text-primary dark:text-textDark-primary flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FolderKanban size={13} className="text-brand" />
+                    Gán vào Chuyên mục
+                  </span>
+                  <span className="text-[10px] text-text-muted dark:text-textDark-secondary">
+                    (Không bắt buộc)
+                  </span>
+                </label>
+                <select
+                  value={selectedCategorySlug}
+                  onChange={(e) => setSelectedCategorySlug(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border rounded-btn text-text-primary dark:text-textDark-primary focus:outline-none focus:border-brand"
+                >
+                  <option value="">-- Mặc định (Chung / Không gán) --</option>
+                  {categories.map((cat) => (
+                    <option key={cat.slug} value={cat.slug}>
+                      {cat.name} ({cat.slug})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div className="border-2 border-dashed border-surface-border dark:border-dark-border hover:border-brand/40 rounded-card p-6 flex flex-col items-center justify-center cursor-pointer transition-colors relative">
               <input
                 type="file"

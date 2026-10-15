@@ -130,10 +130,13 @@ function terminalLogger(): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const backendUrl =
-    env.VITE_API_URL ||
-    env.VITE_BASE_URL ||
-    "https://api-ocr.bittechx.cloud";
+  const backendUrl = env.VITE_API_URL?.trim();
+
+  if (!backendUrl) {
+    throw new Error(
+      "[Vite Config Error] Biến môi trường VITE_API_URL chưa được thiết lập hoặc bị rỗng. Vui lòng cấu hình VITE_API_URL trong file .env hoặc .env.local!"
+    );
+  }
 
   return {
     plugins: [react(), terminalLogger()],

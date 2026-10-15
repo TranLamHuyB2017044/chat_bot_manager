@@ -23,6 +23,10 @@ export interface KnowledgeFile {
   total_chunks?: number;
   error_message?: string;
   updated_at?: string;
+  category_id?: string;
+  category_slug?: string;
+  category_name?: string;
+  category?: string;
 }
 
 export interface WidgetConfig {
@@ -79,6 +83,7 @@ export interface Chatbot {
   };
   workflowWebhookUrl: string;
   collectContactInfo: boolean;
+  showSources: boolean;
   workspaceId?: string;
   publicToken: string;
   embedCode: string;
@@ -128,6 +133,7 @@ interface ChatbotState {
     files?: File[];
     workflowWebhookUrl?: string;
     collectContactInfo?: boolean;
+    showSources?: boolean;
   }) => Promise<string | null>;
   updateChatbotApi: (id: string, data: Partial<Chatbot>) => Promise<void>;
   deleteChatbotApi: (id: string) => Promise<void>;
@@ -159,7 +165,11 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
       status: (d.status?.toUpperCase() || "UPLOADED") as "UPLOADED" | "PROCESSING" | "READY" | "FAILED",
       total_chunks: d.total_chunks,
       error_message: d.error_message,
-      updated_at: d.updated_at
+      updated_at: d.updated_at,
+      category_id: d.category_id,
+      category_slug: d.category_slug || d.category,
+      category_name: d.category_name,
+      category: d.category || d.category_slug
     }));
   }
 
@@ -216,6 +226,9 @@ export function mapBackendBotToFrontend(bot: any): Chatbot {
     collectContactInfo: bot.collect_contact_info !== undefined
       ? Boolean(bot.collect_contact_info)
       : (bot.collectContactInfo !== undefined ? Boolean(bot.collectContactInfo) : true),
+    showSources: bot.show_sources !== undefined
+      ? Boolean(bot.show_sources)
+      : (bot.showSources !== undefined ? Boolean(bot.showSources) : true),
     workspaceId: bot.workspace_id || bot.workspaceId,
     publicToken: bot.public_token || bot.publicToken,
     embedCode: bot.embed_code || "",
@@ -359,6 +372,7 @@ export const useChatbotStore = create<ChatbotState>()(
           if (data.workspaceName) formData.append("workspace_name", data.workspaceName);
           if (data.workflowWebhookUrl) formData.append("workflow_webhook_url", data.workflowWebhookUrl);
           if (data.collectContactInfo !== undefined) formData.append("collect_contact_info", data.collectContactInfo.toString());
+          if (data.showSources !== undefined) formData.append("show_sources", data.showSources.toString());
           if (data.files) {
             data.files.forEach((file) => formData.append("files", file));
           }
@@ -418,6 +432,7 @@ export const useChatbotStore = create<ChatbotState>()(
           if (data.domain !== undefined) backendUpdates.domain = data.domain;
           if (data.workflowWebhookUrl !== undefined) backendUpdates.workflow_webhook_url = data.workflowWebhookUrl;
           if (data.collectContactInfo !== undefined) backendUpdates.collect_contact_info = data.collectContactInfo;
+          if (data.showSources !== undefined) backendUpdates.show_sources = data.showSources;
 
           const res = await apiFetch(`/api/chatbot/${id}`, {
             method: "PUT",

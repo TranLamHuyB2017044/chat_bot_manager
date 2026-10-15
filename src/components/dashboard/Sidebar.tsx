@@ -12,7 +12,8 @@ import {
   Home,
   Users,
   History,
-  BarChart3
+  BarChart3,
+  FolderKanban
 } from "lucide-react";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 
@@ -52,6 +53,7 @@ export default function Sidebar({ role }: { role: number }) {
     { href: `/dashboard/bot/${botId}/sessions`, label: "Phiên trò chuyện", icon: History },
     { href: `/dashboard/bot/${botId}/playground`, label: "Playground", icon: MessageSquare },
     { href: `/dashboard/bot/${botId}/knowledge`, label: "Kiến thức", icon: BookOpen },
+    { href: `/dashboard/bot/${botId}/categories`, label: "Chuyên mục", icon: FolderKanban },
     { href: `/dashboard/bot/${botId}/widget-design`, label: "Giao diện", icon: Palette },
     { href: `/dashboard/bot/${botId}/embed`, label: "Cài đặt Widget", icon: Code },
   ] : [];
@@ -66,6 +68,7 @@ export default function Sidebar({ role }: { role: number }) {
     { href: "/admin", label: "Home", icon: Home },
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/chatbots", label: "Chatbots", icon: Bot },
+    { href: "/admin/audit-logs", label: "Audit Logs", icon: History },
     { href: "/dashboard", label: "My Chatbots", icon: LayoutDashboard },
     { href: "/admin/stats", label: "Stats", icon: BarChart3 },
   ];

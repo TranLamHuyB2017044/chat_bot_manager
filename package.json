@@ -5,12 +5,18 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
+    "preview": "vite preview --port 2009",
+    "serve": "node server.cjs",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:restart": "pm2 restart ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop chatbot-manager",
+    "pm2:logs": "pm2 logs chatbot-manager",
     "lint": "eslint src"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
     "clsx": "^2.1.1",
+    "emoji-picker-react": "^5.0.0",
     "event-source-polyfill": "^1.0.31",
     "immer": "^10.1.1",
     "lucide-react": "^0.441.0",

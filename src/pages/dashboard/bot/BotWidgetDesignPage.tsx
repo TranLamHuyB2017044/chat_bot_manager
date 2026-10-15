@@ -18,6 +18,7 @@ export default function BotWidgetDesignPage() {
   const [displayName, setDisplayName] = useState("");
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [collectContactInfo, setCollectContactInfo] = useState(true);
+  const [showSources, setShowSources] = useState(true);
 
   const bot = chatbots.find((b) => b.id === botId);
 
@@ -29,6 +30,7 @@ export default function BotWidgetDesignPage() {
       setDisplayName(bot.widgetConfig.displayName || bot.name);
       setWelcomeMessage(bot.widgetConfig.welcomeMessage || "Xin chào!");
       setCollectContactInfo(bot.collectContactInfo !== undefined ? bot.collectContactInfo : true);
+      setShowSources(bot.showSources !== undefined ? bot.showSources : true);
     }
   }, [bot]);
 
@@ -62,6 +64,7 @@ export default function BotWidgetDesignPage() {
         greeting: welcomeMessage,
         color: selectedColorIndex,
         collect_contact_info: collectContactInfo,
+        show_sources: showSources,
       };
       
       const res = await apiFetch(`/api/chatbot/${botId}`, {
@@ -149,7 +152,7 @@ export default function BotWidgetDesignPage() {
             </div>
 
             {/* Collect contact info setting */}
-            <div className="pt-1">
+            <div className="pt-1 space-y-2">
               <label className="flex items-center gap-2.5 text-xs text-text-primary dark:text-textDark-primary cursor-pointer p-2.5 rounded-btn bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border hover:border-brand/50 transition">
                 <input
                   type="checkbox"
@@ -160,6 +163,23 @@ export default function BotWidgetDesignPage() {
                 <span className="font-medium select-none">
                   Thu thập thông tin khách hàng (Email / SĐT)
                 </span>
+              </label>
+
+              <label className="flex items-center gap-2.5 text-xs text-text-primary dark:text-textDark-primary cursor-pointer p-2.5 rounded-btn bg-surface-input dark:bg-dark-input border border-surface-border dark:border-dark-border hover:border-brand/50 transition">
+                <input
+                  type="checkbox"
+                  checked={showSources}
+                  onChange={(e) => setShowSources(e.target.checked)}
+                  className="rounded border-surface-border text-brand focus:ring-brand cursor-pointer"
+                />
+                <div className="flex flex-col select-none">
+                  <span className="font-medium">
+                    Hiển thị tài liệu trích dẫn (Show Sources)
+                  </span>
+                  <span className="text-[11px] text-text-secondary dark:text-textDark-secondary">
+                    Cho phép người dùng xem nguồn tài liệu tham khảo khi chatbot phản hồi
+                  </span>
+                </div>
               </label>
             </div>
           </div>
@@ -249,7 +269,15 @@ export default function BotWidgetDesignPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <div className="bg-white dark:bg-zinc-800 border border-surface-border dark:border-dark-border rounded-2xl rounded-tl-none p-3 text-sm text-text-secondary dark:text-textDark-primary leading-relaxed max-w-65 shadow-sm">
-                  Tôi không có thông tin trong tài liệu đã cung cấp.
+                  <p>Dựa theo tài liệu hướng dẫn, hệ thống hỗ trợ tích hợp qua API và Web Widget.</p>
+                  {showSources && (
+                    <div className="mt-2 pt-2 border-t border-gray-100 dark:border-neutral-700/60 flex items-center gap-1 text-[11px] text-text-muted">
+                      <span>📚 Nguồn:</span>
+                      <span className="bg-gray-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded text-[10px] text-brand font-medium">
+                        Huong_dan_su_dung.pdf
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <span className="text-[10px] text-gray-400 ml-2">10:03 AM</span>
               </div>

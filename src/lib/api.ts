@@ -1,10 +1,11 @@
-const DEFAULT_BACKEND_URL =
-  import.meta.env.VITE_API_URL ||
-  import.meta.env.VITE_BASE_URL ||
-  "https://api-ocr.bittechx.cloud";
-
 export const getBackendUrl = (): string => {
-  return DEFAULT_BACKEND_URL;
+  const url = import.meta.env.VITE_API_URL?.trim();
+  if (!url) {
+    throw new Error(
+      "[Config Error] Biến môi trường VITE_API_URL chưa được thiết lập hoặc bị rỗng. Vui lòng cấu hình VITE_API_URL trong file .env hoặc .env.local!"
+    );
+  }
+  return url;
 };
 
 /**
