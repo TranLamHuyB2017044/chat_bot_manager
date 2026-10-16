@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "@/components/ui/Sonner";
 import { useChatbotStore, KnowledgeFile, useStoreHydration } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +17,9 @@ import {
   FileUp,
   AlertCircle,
   FolderKanban,
-  Tag
+  Tag,
+  Eye,
+  ChevronRight
 } from "lucide-react";
 import { apiFetch, getBackendUrl, getApiKey } from "@/lib/api";
 import { EventSourcePolyfill } from "event-source-polyfill";
@@ -26,6 +28,7 @@ import { renderCategoryEmojiOrIcon } from "@/pages/dashboard/bot/BotCategoriesPa
 
 export default function BotKnowledgePage() {
   const { id: botId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { chatbots, updateChatbot } = useChatbotStore();
   // Get the store's get method for fresh state access
   const storeGet = useChatbotStore.getState;
@@ -494,17 +497,29 @@ export default function BotKnowledgePage() {
                 return (
                   <div
                     key={file._id || file.name}
-                    className="group flex flex-col p-4 bg-surface-page dark:bg-dark-page border border-surface-border dark:border-dark-border rounded-card hover:border-brand/40 transition-colors"
+                    onClick={() => {
+                      if (file._id) {
+                        navigate(`/dashboard/bot/${botId}/knowledge/${file._id}`);
+                      }
+                    }}
+                    className={`group flex flex-col p-4 bg-surface-page dark:bg-dark-page border border-surface-border dark:border-dark-border rounded-card hover:border-brand/70 hover:shadow-md transition-all ${
+                      file._id ? "cursor-pointer" : ""
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-lg bg-surface-input dark:bg-dark-input flex items-center justify-center text-text-secondary dark:text-textDark-primary shrink-0 border border-surface-border/50 dark:border-dark-border/50">
+                        <div className="w-10 h-10 rounded-lg bg-surface-input dark:bg-dark-input flex items-center justify-center text-text-secondary dark:text-textDark-primary shrink-0 border border-surface-border/50 dark:border-dark-border/50 group-hover:border-brand/40 group-hover:bg-brand/10 transition-colors">
                           <FileText size={16} className="text-brand" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-text-primary dark:text-textDark-primary truncate">
-                            {file.name}
-                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-semibold text-text-primary dark:text-textDark-primary truncate group-hover:text-brand transition-colors">
+                              {file.name}
+                            </p>
+                            {file._id && (
+                              <ChevronRight size={14} className="text-text-muted opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-brand shrink-0" />
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <Badge variant={statusProps.variant}>
                               {statusProps.icon}
@@ -530,7 +545,23 @@ export default function BotKnowledgePage() {
 
                       {/* Actions */}
                       {file._id && (
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div
+                          className="flex items-center gap-1 shrink-0 ml-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* View details */}
+                          <Tooltip content="Xem chi tiết chunks & text OCR">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard/bot/${botId}/knowledge/${file._id}`);
+                              }}
+                              className="p-2 rounded-btn text-text-muted hover:text-brand hover:bg-brand/10 transition-colors"
+                            >
+                              <Eye size={14} />
+                            </button>
+                          </Tooltip>
+
                           {/* Replace file */}
                           <Tooltip content="Thay thế file">
                             <label className="p-2 rounded-btn text-text-muted hover:text-brand hover:bg-brand/10 cursor-pointer transition-colors">

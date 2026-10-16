@@ -168,6 +168,9 @@ export async function apiFetch(
 
   if (apiKey) {
     headers["x-api-key"] = apiKey;
+    if (!headers["Authorization"]) {
+      headers["Authorization"] = apiKey;
+    }
   }
 
   // Lấy Device ID để gửi cùng request nếu có
@@ -234,3 +237,29 @@ export async function apiFetch(
 
   return response;
 }
+
+/**
+ * Gọi API RAG Playground Search để mổ xẻ và kiểm tra kết quả Vector Search & Context
+ */
+export async function testRagPlayground(params: {
+  workspace_id: string;
+  query: string;
+  category?: string;
+  limit?: number;
+  min_score?: number;
+  domain?: string;
+  generate_answer?: boolean;
+}): Promise<any> {
+  const res = await apiFetch("/api/rag/playground/search", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+  const json = await res.json();
+  if (!res.ok) {
+    throw new Error(
+      json?.message || json?.error || "Lỗi khi gọi API RAG playground search"
+    );
+  }
+  return json.data || json;
+}
+

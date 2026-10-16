@@ -6,6 +6,7 @@ import CreateBotPage from "@/pages/dashboard/CreateBotPage";
 import BotOverviewPage from "@/pages/dashboard/bot/BotOverviewPage";
 import BotPlaygroundPage from "@/pages/dashboard/bot/BotPlaygroundPage";
 import BotKnowledgePage from "@/pages/dashboard/bot/BotKnowledgePage";
+import BotDocumentDetailPage from "@/pages/dashboard/bot/BotDocumentDetailPage";
 import BotWidgetDesignPage from "@/pages/dashboard/bot/BotWidgetDesignPage";
 import BotEmbedPage from "@/pages/dashboard/bot/BotEmbedPage";
 import BotSuccessPage from "@/pages/dashboard/bot/BotSuccessPage";
@@ -89,6 +90,10 @@ const router = createBrowserRouter([
       {
         path: "dashboard/bot/:id/knowledge",
         element: <BotKnowledgePage />,
+      },
+      {
+        path: "dashboard/bot/:id/knowledge/:docId",
+        element: <BotDocumentDetailPage />,
       },
       {
         path: "dashboard/bot/:id/categories",

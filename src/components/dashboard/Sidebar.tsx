@@ -41,7 +41,9 @@ export default function Sidebar({ role }: { role: number }) {
       return pathname === "/admin";
     }
     if (href.startsWith("/dashboard/bot/")) {
-      // For bot routes, exact match only
+      if (href.endsWith("/knowledge") && pathname.startsWith(href)) {
+        return true;
+      }
       return pathname === href;
     }
     return pathname === href || pathname.startsWith(href + "/");
