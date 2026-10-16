@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useChatbotStore, WidgetConfig, useStoreHydration, DEFAULT_AVATARS } from "@/store/chatbotStore";
+import { useChatbotStore, WidgetConfig, useStoreHydration, DEFAULT_AVATARS, mapBackendBotToFrontend } from "@/store/chatbotStore";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ArrowRight, Palette, Loader2, Sparkles } from "lucide-react";
@@ -76,7 +76,6 @@ export default function BotWidgetDesignPage() {
       if (res.ok) {
         const resData = await res.json();
         if (resData.data) {
-          const { mapBackendBotToFrontend } = await import("@/store/chatbotStore");
           const mappedBot = mapBackendBotToFrontend(resData.data);
           updateChatbot(botId!, mappedBot);
           toast.success("Cập nhật widget thành công!");

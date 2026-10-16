@@ -145,6 +145,17 @@ export default defineConfig(({ mode }) => {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
       },
     },
+    build: {
+      chunkSizeWarningLimit: 1500,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "react-vendor": ["react", "react-dom", "react-router-dom"],
+            "ui-vendor": ["lucide-react", "sonner", "clsx", "tailwind-merge"],
+          },
+        },
+      },
+    },
     server: {
       port: 3000,
       open: true,
