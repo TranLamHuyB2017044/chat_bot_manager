@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuthStore } from "@/store/authStore";
-import { Search, UserPlus, Eye, Power, PowerOff, X, Loader2 } from "lucide-react";
+import { Search, UserPlus, Eye, Power, PowerOff, X, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/Sonner";
 import { apiFetch } from "@/lib/api";
@@ -20,10 +20,21 @@ const createUserSchema = z.object({
 
 type CreateUserFormData = z.infer<typeof createUserSchema>;
 
+const editUserSchema = z.object({
+  fullname: z.string().min(1, "Vui lòng nhập họ tên"),
+  email: z.string().email("Email không hợp lệ"),
+  phone: z.string().optional(),
+  role: z.coerce.number(),
+  password: z.string().optional(),
+});
+
+type EditUserFormData = z.infer<typeof editUserSchema>;
+
 export default function UsersPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [usersList, setUsersList] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -37,6 +48,13 @@ export default function UsersPage() {
     reset,
     formState: { errors, isSubmitting },
   } = useForm<CreateUserFormData>({ resolver: zodResolver(createUserSchema) });
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleSubmitEdit,
+    reset: resetEdit,
+    formState: { errors: editErrors, isSubmitting: isSubmittingEdit },
+  } = useForm<EditUserFormData>({ resolver: zodResolver(editUserSchema) });
 
   // Fetch users from API
   const fetchUsers = async () => {
@@ -135,6 +153,51 @@ export default function UsersPage() {
       }
     } catch (err) {
       toast.error("Có lỗi xảy ra, vui lòng thử lại sau");
+    }
+  };
+
+  const handleOpenEditUser = (targetUser: UserType) => {
+    setEditingUser(targetUser);
+    resetEdit({
+      fullname: targetUser.fullname || "",
+      email: targetUser.email || "",
+      phone: targetUser.phone || "",
+      role: targetUser.role ?? 4,
+      password: "",
+    });
+  };
+
+  const onSubmitEditUser = async (data: EditUserFormData) => {
+    if (!editingUser) return;
+    const uid = editingUser._id || editingUser.id || editingUser.account_id || "";
+    if (!uid) return;
+    try {
+      const payload: Record<string, any> = {
+        fullname: data.fullname.trim(),
+        email: data.email.trim(),
+        phone: data.phone?.trim() || "",
+        role: Number(data.role),
+      };
+      if (data.password && data.password.trim().length > 0) {
+        payload.password = data.password.trim();
+      }
+
+      const res = await apiFetch(`/api/admin/users/${uid}`, {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+
+      if (res.ok && (result.statusCode === 200 || !result.statusCode)) {
+        toast.success("Cập nhật thông tin người dùng thành công!");
+        setEditingUser(null);
+        fetchUsers();
+      } else {
+        toast.error(result.message || result.error || "Cập nhật người dùng thất bại");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Có lỗi xảy ra, vui lòng thử lại sau");
     }
   };
 
@@ -297,6 +360,13 @@ export default function UsersPage() {
                           title="Xem chi tiết"
                         >
                           <Eye size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditUser(userObj)}
+                          className="p-1.5 rounded-btn text-text-muted dark:text-textDark-muted hover:bg-brand-soft dark:hover:bg-brand-softDark hover:text-brand transition"
+                          title="Chỉnh sửa thông tin"
+                        >
+                          <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => toggleUserActive(uid, userObj.active)}
@@ -468,6 +538,120 @@ export default function UsersPage() {
                     </span>
                   ) : (
                     "Tạo tài khoản"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-surface-card dark:bg-dark-card rounded-card border border-surface-border dark:border-dark-border w-full max-w-md p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-text-primary dark:text-textDark-primary">
+                Chỉnh sửa người dùng
+              </h2>
+              <button
+                onClick={() => setEditingUser(null)}
+                className="p-1 rounded-btn hover:bg-surface-input dark:hover:bg-dark-input text-text-muted dark:text-textDark-muted transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitEdit(onSubmitEditUser)} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Họ tên *
+                </label>
+                <input
+                  {...registerEdit("fullname")}
+                  type="text"
+                  placeholder="Nguyễn Văn A"
+                  className={inputCls(!!editErrors.fullname)}
+                />
+                {editErrors.fullname && (
+                  <p className="text-xs text-danger mt-1">{editErrors.fullname.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Email *
+                </label>
+                <input
+                  {...registerEdit("email")}
+                  type="email"
+                  placeholder="email@example.com"
+                  className={inputCls(!!editErrors.email)}
+                />
+                {editErrors.email && (
+                  <p className="text-xs text-danger mt-1">{editErrors.email.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Số điện thoại
+                </label>
+                <input
+                  {...registerEdit("phone")}
+                  type="tel"
+                  placeholder="0123456789"
+                  className={inputCls()}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Vai trò (Role) *
+                </label>
+                <select
+                  {...registerEdit("role")}
+                  className={inputCls()}
+                >
+                  <option value={4}>Người dùng thông thường (User)</option>
+                  <option value={0}>Quản trị viên (Admin)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-text-secondary dark:text-textDark-secondary mb-1.5">
+                  Đặt lại mật khẩu mới (Tùy chọn)
+                </label>
+                <input
+                  {...registerEdit("password")}
+                  type="password"
+                  placeholder="Để trống nếu không muốn đổi mật khẩu"
+                  className={inputCls()}
+                />
+                <span className="text-[11px] text-text-muted mt-1 inline-block">
+                  Chỉ nhập khi bạn muốn thiết lập lại mật khẩu đăng nhập cho người dùng này.
+                </span>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="flex-1 py-2.5 rounded-btn text-sm font-semibold text-text-secondary dark:text-textDark-secondary bg-surface-input dark:bg-dark-input hover:bg-surface-border dark:hover:bg-dark-border transition"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingEdit}
+                  className="flex-1 py-2.5 rounded-btn text-sm font-semibold text-white bg-brand hover:bg-brand-hover active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingEdit ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 size={14} className="animate-spin" />
+                      Đang lưu...
+                    </span>
+                  ) : (
+                    "Lưu thay đổi"
                   )}
                 </button>
               </div>

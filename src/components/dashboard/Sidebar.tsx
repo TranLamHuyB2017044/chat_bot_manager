@@ -13,7 +13,8 @@ import {
   Users,
   History,
   BarChart3,
-  FolderKanban
+  FolderKanban,
+  User,
 } from "lucide-react";
 import { useChatbotStore, useStoreHydration } from "@/store/chatbotStore";
 
@@ -39,6 +40,9 @@ export default function Sidebar({ role }: { role: number }) {
     }
     if (href === "/admin") {
       return pathname === "/admin";
+    }
+    if (href === "/profile") {
+      return pathname === "/profile" || pathname === "/dashboard/profile";
     }
     if (href.startsWith("/dashboard/bot/")) {
       if (href.endsWith("/knowledge") && pathname.startsWith(href)) {
@@ -73,6 +77,7 @@ export default function Sidebar({ role }: { role: number }) {
     { href: "/admin/audit-logs", label: "Audit Logs", icon: History },
     { href: "/dashboard", label: "My Chatbots", icon: LayoutDashboard },
     { href: "/admin/stats", label: "Stats", icon: BarChart3 },
+    { href: "/profile", label: "Hồ sơ cá nhân", icon: User },
   ];
 
   return (
@@ -222,6 +227,53 @@ export default function Sidebar({ role }: { role: number }) {
                 ))}
               </>
             )}
+
+            <p className="text-[9px] uppercase tracking-wider text-sidebar-navSec px-3 pb-2 pt-3 font-semibold">
+              Tài khoản
+            </p>
+            <Link
+              to="/dashboard"
+              className={cn(
+                "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
+                isActive("/dashboard")
+                  ? "bg-sidebar-active text-sidebar-navActive shadow-sm border-l-2 border-brand pl-2"
+                  : "text-sidebar-navText hover:bg-sidebar-hover hover:text-sidebar-navActive"
+              )}
+            >
+              <Bot
+                size={15}
+                className={cn(
+                  "shrink-0 transition-colors duration-200",
+                  isActive("/dashboard") ? "text-brand" : "text-sidebar-navSec group-hover:text-sidebar-navText"
+                )}
+              />
+              <span className="truncate">Danh sách Chatbot</span>
+              {isActive("/dashboard") && (
+                <ChevronRight size={12} className="ml-auto text-brand opacity-60" />
+              )}
+            </Link>
+
+            <Link
+              to="/profile"
+              className={cn(
+                "group flex items-center gap-2.5 px-3 py-2 rounded-btn text-sm font-medium transition-all duration-200",
+                isActive("/profile")
+                  ? "bg-sidebar-active text-sidebar-navActive shadow-sm border-l-2 border-brand pl-2"
+                  : "text-sidebar-navText hover:bg-sidebar-hover hover:text-sidebar-navActive"
+              )}
+            >
+              <User
+                size={15}
+                className={cn(
+                  "shrink-0 transition-colors duration-200",
+                  isActive("/profile") ? "text-brand" : "text-sidebar-navSec group-hover:text-sidebar-navText"
+                )}
+              />
+              <span className="truncate">Hồ sơ cá nhân</span>
+              {isActive("/profile") && (
+                <ChevronRight size={12} className="ml-auto text-brand opacity-60" />
+              )}
+            </Link>
           </>
         )}
       </nav>

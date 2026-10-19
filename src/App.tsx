@@ -19,6 +19,7 @@ import AdminChatbotDetailPage from "@/pages/admin/AdminChatbotDetailPage";
 import AdminUserDetailPage from "@/pages/admin/AdminUserDetailPage";
 import AdminStatsPage from "@/pages/admin/AdminStatsPage";
 import AdminAuditLogsPage from "@/pages/admin/AdminAuditLogsPage";
+import ProfilePage from "@/pages/dashboard/ProfilePage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuthStore, useAuthHydration } from "@/store/authStore";
 import { Loader2 } from "lucide-react";
@@ -74,6 +75,14 @@ const router = createBrowserRouter([
       {
         path: "dashboard",
         element: <DashboardPage />,
+      },
+      {
+        path: "profile",
+        element: <ProfilePage />,
+      },
+      {
+        path: "dashboard/profile",
+        element: <ProfilePage />,
       },
       {
         path: "dashboard/create",

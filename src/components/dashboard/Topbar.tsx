@@ -70,18 +70,6 @@ export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
     "hover:text-text-secondary dark:hover:text-textDark-primary"
   );
 
-  // Dynamic titles based on active route
-  const getSubTitle = () => {
-    if (activeBot) {
-      if (pathname.endsWith("/playground")) return "Playground — Thử nghiệm hội thoại";
-      if (pathname.endsWith("/knowledge")) return `Kiến thức — ${activeBot.knowledgeBase.files.length} tài liệu / trang`;
-      if (pathname.endsWith("/widget-design")) return "Giao diện — Tùy chỉnh màu sắc & nội dung";
-      if (pathname.endsWith("/embed")) return "Cài đặt Widget — Lấy mã nhúng website";
-      if (pathname.endsWith("/settings")) return "Cài đặt — Quản lý chatbot";
-      return activeBot.knowledgeBase.websiteUrl || "Trang tổng quan hoạt động";
-    }
-    return "Tổng quan tài khoản";
-  };
 
   const getTitle = () => {
     if (activeBot) {
@@ -95,7 +83,25 @@ export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
     if (pathname.includes("/dashboard/create")) {
       return "Tạo chatbot cho website của bạn";
     }
+    if (pathname === "/profile" || pathname === "/dashboard/profile") {
+      return "Hồ sơ cá nhân & Bảo mật";
+    }
     return pageTitle;
+  };
+
+  const getSubTitle = () => {
+    if (activeBot) {
+      if (pathname.endsWith("/playground")) return "Playground — Thử nghiệm hội thoại";
+      if (pathname.endsWith("/knowledge")) return `Kiến thức — ${activeBot.knowledgeBase.files.length} tài liệu / trang`;
+      if (pathname.endsWith("/widget-design")) return "Giao diện — Tùy chỉnh màu sắc & nội dung";
+      if (pathname.endsWith("/embed")) return "Cài đặt Widget — Lấy mã nhúng website";
+      if (pathname.endsWith("/settings")) return "Cài đặt — Quản lý chatbot";
+      return activeBot.knowledgeBase.websiteUrl || "Trang tổng quan hoạt động";
+    }
+    if (pathname === "/profile" || pathname === "/dashboard/profile") {
+      return "Cập nhật thông tin cá nhân và mật khẩu tài khoản";
+    }
+    return "Tổng quan tài khoản";
   };
 
   return (
@@ -140,21 +146,41 @@ export default function Topbar({ user, pageTitle = "Dashboard" }: Props) {
           {roleLabel}
         </span>
 
-        {/* Avatar + name */}
-        <div className="flex items-center gap-2 ml-1">
-          <div className="w-7 h-7 rounded-full bg-brand flex items-center justify-center text-white text-xs font-bold shadow-sm select-none">
-            {initials}
-          </div>
+        {/* Avatar + name (Click to Profile) */}
+        <button
+          onClick={() => navigate("/profile")}
+          className={cn(
+            "flex items-center gap-2 ml-1 p-1 rounded-btn hover:bg-surface-input dark:hover:bg-dark-input transition text-left cursor-pointer",
+            (pathname === "/profile" || pathname === "/dashboard/profile") &&
+              "bg-brand/10 dark:bg-brand/15 ring-1 ring-brand/30"
+          )}
+          title="Xem hồ sơ & đổi mật khẩu"
+        >
+          {user.avatar_url ? (
+            <img
+              src={user.avatar_url}
+              alt={displayName}
+              className="w-7 h-7 rounded-full object-cover border border-brand/30 shrink-0"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
+            />
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-brand flex items-center justify-center text-white text-xs font-bold shadow-sm select-none shrink-0">
+              {initials}
+            </div>
+          )}
           <span className="text-xs font-semibold text-text-primary dark:text-textDark-primary hidden sm:block max-w-[100px] truncate select-none">
             {displayName}
           </span>
-        </div>
+        </button>
 
         {/* Sign out */}
         <button
           onClick={handleLogout}
           className={cn(iconBtn, "hover:text-danger ml-1")}
           aria-label="Sign out"
+          title="Đăng xuất"
         >
           <LogOut size={15} />
         </button>

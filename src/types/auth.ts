@@ -31,13 +31,28 @@ export interface Chatbot {
 export interface AuthUser {
   id: string;
   user_id: number;
+  username?: string;
   email: string;
   fullname: string;
-  role: Role;
+  phone?: string;
+  role: Role | number;
   account_id: string;
   avatar_url?: string;
   quota?: Quota;
   chatbots?: Chatbot[];
+}
+
+export interface UpdateProfilePayload {
+  fullname?: string;
+  phone?: string;
+  avatar_url?: string;
+}
+
+export interface ChangePasswordPayload {
+  old_password?: string;
+  current_password?: string;
+  new_password?: string;
+  confirm_password?: string;
 }
 
 export interface AuthResponse {

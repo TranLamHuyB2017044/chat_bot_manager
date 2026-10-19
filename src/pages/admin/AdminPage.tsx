@@ -43,13 +43,8 @@ export default function AdminPage() {
           <h1 className="text-xl font-bold text-text-primary dark:text-textDark-primary">
             Admin Overview
           </h1>
-          <p className="text-sm text-text-muted dark:text-textDark-secondary mt-0.5">
-            Toàn bộ hệ thống — chỉ Admin mới thấy trang này.
-          </p>
+          
         </div>
-        <span className="text-xs px-3 py-1.5 rounded-pill bg-brand-soft dark:bg-brand-softDark text-success-text dark:text-brand font-semibold border border-brand/20">
-          🛡 Admin Mode
-        </span>
       </div>
 
       {/* KPI Grid */}
